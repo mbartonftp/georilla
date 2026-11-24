@@ -2,7 +2,7 @@
 import { COUNTRIES, COUNTRY } from "./countries";
 import { VIEWS } from "./popularity.gen";
 import { wordplayNames } from "./prompts";
-import { rate } from "./rarity";
+import { CITY_STATE_FACTOR, rate, salience } from "./rarity";
 import { REGION_SETS } from "./regions";
 import type { Answer, Country, Judgement, Prompt } from "./types";
 import { WORLD } from "./world.gen";
@@ -27,23 +27,24 @@ const CAPITAL_OF = new Map(COUNTRIES.flatMap(c => c.caps.map(k => [k.name, { cou
 const MISSING_VIEWS = 1000;
 const views = (wiki: string) => VIEWS[wiki] ?? MISSING_VIEWS;
 
-type Draft = Omit<Answer, "tier" | "share" | "nkeys">;
+type Draft = Omit<Answer, "tier" | "share" | "nkeys"> & { weight: number };
 
 function draft(p: Prompt, name: string): Draft {
   if (p.kind === "capital") {
     const hit = CAPITAL_OF.get(name);
     if (!hit) throw new Error(`${p.id}: unknown capital ${name}`);
-    return { label: name, sub: hit.country.name, country: hit.country.name, views: views(hit.cap.wiki), keys: [name, ...hit.cap.aliases] };
+    const v = views(hit.cap.wiki), weight = salience(v) * (hit.cap.wiki === hit.country.wiki ? CITY_STATE_FACTOR : 1);
+    return { label: name, sub: hit.country.name, country: hit.country.name, views: v, weight, keys: [name, ...hit.cap.aliases] };
   }
   if (p.kind === "region") {
     const r = REGION_SETS[p.parent!]?.find(x => x.name === name);
     if (!r) throw new Error(`${p.id}: unknown region ${name}`);
-    return { label: name, country: p.parent, views: views(r.wiki), keys: [name, ...r.aliases] };
+    return { label: name, country: p.parent, views: views(r.wiki), weight: salience(views(r.wiki)), keys: [name, ...r.aliases] };
   }
   const c = COUNTRY.get(name);
   if (!c) throw new Error(`${p.id}: unknown country ${name}`);
   const keys = p.spell ? wordplayNames(c).filter(p.spell) : countryKeys(c);
-  return { label: keys[0], country: c.name, views: views(c.wiki), keys };
+  return { label: keys[0], country: c.name, views: views(c.wiki), weight: salience(views(c.wiki), WORLD[c.name].pop), keys };
 }
 
 const cache = new Map<string, Answer[]>();
@@ -52,8 +53,8 @@ export function answersFor(p: Prompt): Answer[] {
   const hit = cache.get(p.id);
   if (hit) return hit;
   const items = p.answers.map(n => draft(p, n));
-  const rated = rate(items.map(i => i.views), items.map(i => !!p.trick?.includes(i.country && p.kind === "country" ? i.country : i.label)));
-  const out = items.map((it, i): Answer => ({ ...it, ...rated[i], nkeys: it.keys.map(norm) }))
+  const rated = rate(items.map(i => i.weight), items.map(i => !!p.trick?.includes(i.country && p.kind === "country" ? i.country : i.label)));
+  const out = items.map(({ weight: _w, ...it }, i): Answer => ({ ...it, ...rated[i], nkeys: it.keys.map(norm) }))
     .sort((a, b) => b.share - a.share || a.label.localeCompare(b.label));
   cache.set(p.id, out);
   return out;
