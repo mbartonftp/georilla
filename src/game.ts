@@ -176,8 +176,8 @@ export function startGame(): void {
     timerRaf = requestAnimationFrame(tick);
   }
 
-  function onSubmit(e: SubmitEvent): void {
-    e.preventDefault();
+  function onSubmit(e: SubmitEvent): void { e.preventDefault(); submitGuess(); }
+  function submitGuess(): void {
     if (S.phase !== "play") return;
     const v = guess.value; closeSuggest();
     const r = judge(ITEMS[S.i], v);
@@ -223,7 +223,7 @@ export function startGame(): void {
     suggestEl.innerHTML = sugg.map((s, i) => {
       const idx = s.n.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").indexOf(raw.toLowerCase());
       const label = idx >= 0 ? esc(s.n.slice(0, idx)) + "<mark>" + esc(s.n.slice(idx, idx + raw.length)) + "</mark>" + esc(s.n.slice(idx + raw.length)) : esc(s.n);
-      return `<li role="option" id="sg${i}" aria-selected="false" data-i="${i}">${label}</li>`;
+      return `<li role="option" id="sg${i}" aria-selected="false" data-n="${esc(s.n)}">${label}</li>`;
     }).join("");
     suggestEl.hidden = false; guess.setAttribute("aria-expanded", "true");
   }
@@ -233,7 +233,9 @@ export function startGame(): void {
     [...suggestEl.children].forEach((li, i) => li.setAttribute("aria-selected", String(i === sel)));
     guess.setAttribute("aria-activedescendant", "sg" + sel);
   }
-  function choose(i: number): void { guess.value = sugg[i].n; closeSuggest(); form.requestSubmit(); }
+  // Submit directly rather than via form.requestSubmit(), and take the name from the tapped row,
+  // so a pick still works if the list was cleared or re-rendered between touch start and end.
+  function choose(name: string | undefined): void { if (!name) return; guess.value = name; closeSuggest(); submitGuess(); }
 
   /* ---------- reveal ---------- */
   async function finishRound(item: Answer | null, why?: string): Promise<void> {
@@ -414,14 +416,31 @@ export function startGame(): void {
   guess.addEventListener("keydown", e => {
     if (e.key === "ArrowDown") { e.preventDefault(); moveSel(1); }
     else if (e.key === "ArrowUp") { e.preventDefault(); moveSel(-1); }
-    else if (e.key === "Enter" && sel >= 0) { e.preventDefault(); choose(sel); }
+    else if (e.key === "Enter" && sel >= 0) { e.preventDefault(); choose(sugg[sel]?.n); }
     else if (e.key === "Escape") closeSuggest();
   });
   guess.addEventListener("blur", () => setTimeout(closeSuggest, 150));
-  suggestEl.addEventListener("pointerdown", e => {
-    const li = (e.target as HTMLElement).closest("li");
-    if (li) { e.preventDefault(); choose(Number(li.dataset.i)); }
+  /* Picking a suggestion. On iPhone a tap is touchstart → pointerdown → touchend → (late) click, and the
+     input can blur in between. So: keep focus on pointerdown, pick on pointerup over the same row, swallow
+     the late synthetic click so it can't land on whatever replaces the list, and keep click as a fallback
+     for assistive tech. */
+  const rowOf = (e: Event): HTMLElement | null => (e.target as HTMLElement).closest<HTMLElement>("#suggest li");
+  let downRow: HTMLElement | null = null, downY = 0, pickedAt = 0;
+  suggestEl.addEventListener("pointerdown", e => { downRow = rowOf(e); downY = e.clientY; if (downRow) e.preventDefault(); });
+  suggestEl.addEventListener("pointerup", e => {
+    const row = rowOf(e), start = downRow; downRow = null;
+    if (!row || row !== start || Math.abs(e.clientY - downY) > 12) return;
+    e.preventDefault(); pickedAt = performance.now(); choose(row.dataset.n);
   });
+  suggestEl.addEventListener("pointercancel", () => { downRow = null; });
+  suggestEl.addEventListener("touchend", e => { if (rowOf(e)) e.preventDefault(); }, { passive: false });
+  suggestEl.addEventListener("click", e => {
+    const row = rowOf(e); if (!row) return;
+    e.preventDefault(); if (performance.now() - pickedAt < 600) return;
+    choose(row.dataset.n);
+  });
+  // a late synthetic click from that tap must not hit the reveal screen that just replaced the play screen
+  document.addEventListener("click", e => { if (performance.now() - pickedAt < 400 && !rowOf(e)) { e.preventDefault(); e.stopPropagation(); } }, true);
   $("skip").addEventListener("click", () => { if (S.phase === "play") void finishRound(null, "Skipped."); });
   $("nextq").addEventListener("click", next);
   document.addEventListener("keydown", e => { if (e.key === "Enter" && S.phase === "reveal" && document.activeElement !== $("nextq")) next(); });
