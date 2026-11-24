@@ -5,19 +5,10 @@ import { easeCubicInOut } from "d3-ease";
 import { feature, merge, mesh } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import type { Feature, Geometry, MultiLineString, MultiPolygon } from "geojson";
-import { COUNTRIES } from "./data";
+import { ATLAS_NAME, COUNTRIES } from "./data";
 
 export type LonLat = [number, number];
 
-// world-atlas names that differ from ours
-const ATLAS: Record<string, string> = {
-  "Antigua and Barbuda": "Antigua and Barb.", "Bosnia and Herzegovina": "Bosnia and Herz.", "Cape Verde": "Cabo Verde",
-  "Central African Republic": "Central African Rep.", "DR Congo": "Dem. Rep. Congo", "Dominican Republic": "Dominican Rep.",
-  "East Timor": "Timor-Leste", "Equatorial Guinea": "Eq. Guinea", "Eswatini": "eSwatini", "Ivory Coast": "Côte d'Ivoire",
-  "Marshall Islands": "Marshall Is.", "North Macedonia": "Macedonia", "Saint Kitts and Nevis": "St. Kitts and Nevis",
-  "Saint Vincent and the Grenadines": "St. Vin. and Gren.", "São Tomé and Príncipe": "São Tomé and Principe",
-  "Solomon Islands": "Solomon Is.", "South Sudan": "S. Sudan", "United States": "United States of America", "Vatican City": "Vatican"
-};
 // where to point for countries whose shape centroid lands somewhere unhelpful (overseas parts, dateline, missing shape)
 const CENTER: Record<string, LonLat> = {
   "France": [2.5, 46.6], "United States": [-98, 39.5], "Russia": [95, 62], "Canada": [-100, 58], "Netherlands": [5.3, 52.2],
@@ -78,7 +69,7 @@ export class Globe {
       const byAtlas: Record<string, Feature<Geometry>> = {};
       feature(w50, w50.objects.countries).features.forEach(f => { byAtlas[f.properties.name] = f; });
       COUNTRIES.forEach(c => {
-        const f = byAtlas[ATLAS[c.name] || c.name];
+        const f = byAtlas[ATLAS_NAME[c.name] || c.name];
         if (f) this.shapes[c.name] = f;
         const ll = CENTER[c.name] || (f ? (geoCentroid(f) as LonLat) : null);
         if (ll) this.centers[c.name] = ll;

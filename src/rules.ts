@@ -28,16 +28,15 @@ export const dayKey = (d: Date): number => d.getFullYear() * 10000 + (d.getMonth
 /** Expedition number for a local date; 24 Nov 2026 is No. 1. */
 export const dayNumber = (d: Date): number => Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - EPOCH) / 864e5) + 1;
 
-/** Seven prompts for a seed, at most one per family (one continent, one letter, one border prompt...). */
+/** Seven prompts for a seed: seven different categories, each picked evenly, then a prompt within each.
+    Picking the category first keeps big categories (there are dozens of border prompts) from crowding out the rest. */
 export function pickSet(seed: number, pool: Prompt[] = P): Prompt[] {
-  const rnd = mulberry32(seed * 2654435761 % 4294967296), shuffled = pool.slice(), out: Prompt[] = [], used = new Set<string>();
-  for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
-  for (const p of shuffled) {
-    const fam = p.id.split("-")[0];
-    if (used.has(fam) && fam !== p.id) continue;
-    used.add(fam); out.push(p);
-    if (out.length === ROUNDS) break;
-  }
+  const rnd = mulberry32(seed * 2654435761 % 4294967296);
+  const shuffle = <T>(a: T[]): T[] => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const byCat = new Map<string, Prompt[]>();
+  for (const p of pool) byCat.set(p.cat, [...(byCat.get(p.cat) || []), p]);
+  const cats = shuffle([...byCat.keys()].sort());
+  const out = cats.slice(0, ROUNDS).map(c => { const list = byCat.get(c)!; return list[Math.floor(rnd() * list.length)]; });
   return out;
 }
 
