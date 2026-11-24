@@ -1,0 +1,40 @@
+name: Refresh popularity
+
+# Looks up Wikipedia pageviews for every place in the game (the basis of rarity) and commits the result.
+# Runs by hand, once a year, and on branches that change which places the game knows.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 2 1 *"
+  push:
+    branches-ignore: [main]
+    paths:
+      - scripts/fetch-popularity.ts
+      - src/data/countries.ts
+      - src/data/regions.ts
+      - .github/workflows/refresh-popularity.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: popularity-${{ github.ref }}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run data:popularity
+      - name: Commit if changed
+        run: |
+          if git diff --quiet; then echo "No change"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898242+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Refresh Wikipedia pageview data"
+          git push
