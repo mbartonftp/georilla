@@ -224,7 +224,7 @@ export const COUNTRIES: Country[] = [
   c("Uganda", "UGA", "AF", ["Kampala"]),
   c("Ukraine", "UKR", "EU", ["Kyiv"]),
   c("United Arab Emirates", "ARE", "AS", ["Abu Dhabi"], ["UAE", "Emirates"]),
-  c("United Kingdom", "GBR", "EU", ["London"], ["UK", "Britain", "Great Britain"]),
+  c("United Kingdom", "GBR", "EU", ["London"], ["UK", "Britain", "Great Britain", "United Kingdom of Great Britain and Northern Ireland", "England", "Scotland", "Wales", "Northern Ireland"]),
   c("United States", "USA", "NA", ["Washington, D.C."], ["USA", "US", "America", "United States of America"]),
   c("Uruguay", "URY", "SA", ["Montevideo"]),
   c("Uzbekistan", "UZB", "AS", ["Tashkent"]),

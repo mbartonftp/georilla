@@ -184,3 +184,11 @@ describe("helpers", () => {
     for (const c of COUNTRIES) expect(names.has(c.name), c.name).toBe(true);
   });
 });
+
+describe("home nations", () => {
+  it("counts England, Scotland and Wales as the United Kingdom, except in wordplay", () => {
+    expect(judge(answersFor(prompt("cont-EU")), "England")).toMatchObject({ kind: "ok", item: { label: "United Kingdom" } });
+    expect(judge(answersFor(prompt("sea-north")), "Scotland")).toMatchObject({ kind: "ok" });
+    expect(P.find(p => p.id === "letter-E")?.answers ?? []).not.toContain("United Kingdom");
+  });
+});

@@ -21,7 +21,7 @@ const names = (f: (c: Country) => boolean) => COUNTRIES.filter(f).map(c => c.nam
 /** the names a player could type for a country, for wordplay prompts (the open data's foreign-language names don't count) */
 export const wordplayNames = (c: Country) => [c.name, ...c.aliases.filter(a => !NICKNAMES.has(a))];
 /** aliases we accept elsewhere but that would be cheating at wordplay */
-const NICKNAMES = new Set(["Holland", "America", "Britain", "Emirates", "Vatican", "Bosnia", "Trinidad", "Antigua", "Saint Kitts", "St Kitts", "Saint Vincent", "Sao Tome"]);
+const NICKNAMES = new Set(["Holland", "America", "Britain", "England", "Scotland", "Wales", "Northern Ireland", "Emirates", "Vatican", "Bosnia", "Trinidad", "Antigua", "Saint Kitts", "St Kitts", "Saint Vincent", "Sao Tome"]);
 const initial = (s: string) => s.replace(/^the /i, "")[0].toUpperCase();
 
 export const P: Prompt[] = [];
