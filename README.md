@@ -16,7 +16,7 @@ Play it at https://mbartonftp.github.io/georilla/
 
 ## How rarity works
 
-There are no player counts yet, so Georilla predicts them. It assumes the chance that a player names a place is proportional to how often that place's English Wikipedia article is read: Paris is read far more than Chișinău, and far more players will think of it. Each right answer's predicted share is its pageviews over the total for all the prompt's answers.
+There are no player counts yet, so Georilla predicts them. It assumes the chance that a player names a place is proportional to how often that place's English Wikipedia article is read: Paris is read far more than Chișinău, and far more players will think of it. Pageviews are averaged over five years to smooth out news spikes, raised to a power of 1.5 to sharpen the gap between famous and obscure places, and, for countries, multiplied by population to the power 0.25, because big countries come to mind even when few people read about them. Each right answer's predicted share is that weight over the total for all the prompt's answers.
 
 The answers are then sorted from most to least likely and tiered by cumulative share. The answers that make up the first 50% of predicted guesses are Common, the next 25% Familiar, the next 15% Uncommon and the next 7% Rare. The last 3% are Silverback, so a Silverback answer is one that fewer than about one player in thirty would give. Small prompts with evenly known answers have fewer Silverbacks; big prompts with a long tail have more. The constants live in `src/data/rarity.ts`.
 
@@ -30,7 +30,7 @@ Once there are real players, their answer counts can be blended into the same we
 - **Open data** (`src/data/world.gen.ts`, regenerate with `npm run data:world`): land borders, area, landlocked status, currencies and native names from [mledoze/countries](https://github.com/mledoze/countries) (ODbL), and population from the World Bank via [datasets/population](https://github.com/datasets/population) (CC BY 4.0). Known errors in the source are corrected in `scripts/build-world.ts`.
 - **Hand-checked features** (`src/data/features.ts`): seas, rivers, mountain ranges, lines of latitude, regions, languages and currencies.
 - **States and provinces** (`src/data/regions.ts`): the US, Canada, Australia, Germany, India, Brazil and Mexico.
-- **Popularity** (`src/data/popularity.gen.ts`): a year of English Wikipedia pageviews for every country, capital and region. Wikipedia's API isn't reachable from every machine, so the **Refresh popularity** GitHub Action (`.github/workflows/refresh-popularity.yml`) fetches it and commits the result. It runs on a branch whenever the list of places changes, every January, and on demand. You can also run `npm run data:popularity` locally.
+- **Popularity** (`src/data/popularity.gen.ts`): the average yearly English Wikipedia pageviews, over five years, for every country, capital and region. Wikipedia's API isn't reachable from every machine, so the **Refresh popularity** GitHub Action (`.github/workflows/refresh-popularity.yml`) fetches it and commits the result. It runs on a branch whenever the list of places changes, every January, and on demand. You can also run `npm run data:popularity` locally.
 
 The tests check this data hard: borders are symmetric and match the shared edges of the map shapes, the equator, tropics, Arctic Circle and Prime Meridian lists match the real country outlines, no landlocked country appears on a coast, no typed name can mean two answers, every place has pageview data, and every prompt has at least five answers.
 
@@ -41,12 +41,14 @@ It's written in TypeScript and built with Vite. Node 20 or newer is needed.
 ```sh
 npm install
 npm run dev        # local server with hot reload at http://localhost:5173/georilla/
-npm test           # unit tests for content, answer matching and scoring (Vitest)
+npm test           # unit tests for data integrity, answer matching, rarity and scoring (Vitest)
 npm run typecheck  # strict TypeScript check
 npm run build      # production build into dist/
+npm run data:world       # regenerate open-data country facts (src/data/world.gen.ts)
+npm run data:popularity  # regenerate Wikipedia pageviews (src/data/popularity.gen.ts); needs access to Wikipedia
 ```
 
-GitHub Actions (`.github/workflows/deploy.yml`) type-checks, tests and builds every pull request. It deploys `main` to GitHub Pages. For that to work, set the Pages source to **GitHub Actions** in the repo settings.
+GitHub Actions (`.github/workflows/deploy.yml`) type-checks, tests and builds every pull request. It deploys `main` to GitHub Pages; for that to work, set the Pages source to **GitHub Actions** in the repo settings. A second workflow, `refresh-popularity.yml`, keeps the pageview data current (see above).
 
 ## Files
 
@@ -64,6 +66,6 @@ GitHub Actions (`.github/workflows/deploy.yml`) type-checks, tests and builds ev
 - `src/sound.ts`, `src/fx.ts`, `src/store.ts`: sound effects, confetti, and safe localStorage.
 - `src/style.css`: styles.
 - `public/data/`: Natural Earth country shapes from world-atlas, in 110m and 50m resolutions.
-- `tests/`: Vitest unit tests.
+- `tests/`: Vitest unit tests. `geometry.test.ts` checks borders and lines of latitude against the map shapes.
 
 Scores and stats are saved only in the player's browser.
