@@ -18,22 +18,35 @@ Play it at https://mbartonftp.github.io/georilla/
 
 There are no player counts yet, so each country has a hand-set fame score from 1 (obscure) to 5 (household name). For each prompt, the right answers are ranked by fame against each other and split into five tiers. A prompt can mark surprising answers as top tier by hand with `boost`, for example Brazil bordering France through French Guiana.
 
+## Development
+
+It's written in TypeScript and built with Vite. Node 20 or newer is needed.
+
+```sh
+npm install
+npm run dev        # local server with hot reload at http://localhost:5173/georilla/
+npm test           # unit tests for content, answer matching and scoring (Vitest)
+npm run typecheck  # strict TypeScript check
+npm run build      # production build into dist/
+```
+
+GitHub Actions (`.github/workflows/deploy.yml`) type-checks, tests and builds every pull request. It deploys `main` to GitHub Pages. For that to work, set the Pages source to **GitHub Actions** in the repo settings.
+
 ## Files
 
-It's a static site with no build step and no backend. Serve the repo root.
-
-- `index.html`: markup and styles.
-- `js/data.js`: all content and answer matching.
+- `index.html`: page markup. Vite's entry point is `src/main.ts`.
+- `src/data.ts`: all content and answer matching.
   - `RAW`: countries with continents, capitals, fame, tags and accepted alternative names.
   - `BORDERS`: borders for the "borders X" prompts.
   - `CUSTOM`: US states, Canadian provinces and Australian states.
   - `P`: the prompt list.
   - `judge()`: answer matching.
-- `js/globe.js`: the canvas globe, with fly-to, fills, pins and drag to spin.
-- `js/game.js`: game flow, timer, reveal, results, sound and confetti.
-- `vendor/`: d3 and topojson-client, copied in so the game has no runtime CDN dependency.
-- `data/`: Natural Earth country shapes from world-atlas, in 110m and 50m resolutions.
+- `src/rules.ts`: daily seeding, scoring, ranks and the share line. It doesn't touch the page.
+- `src/globe.ts`: the canvas globe (d3-geo), with fly-to, fills, pins and drag to spin.
+- `src/game.ts`: game flow, timer, reveal and results.
+- `src/sound.ts`, `src/fx.ts`, `src/store.ts`: sound effects, confetti, and safe localStorage.
+- `src/style.css`: styles.
+- `public/data/`: Natural Earth country shapes from world-atlas, in 110m and 50m resolutions.
+- `tests/`: Vitest unit tests.
 
 Scores and stats are saved only in the player's browser.
-
-To run it locally, run `python3 -m http.server` in the repo root and open http://localhost:8000. The map data is fetched, so opening the file directly doesn't work.

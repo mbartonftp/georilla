@@ -1,4 +1,9 @@
-/* Georilla content: countries, prompts and answer matching. Edit freely. */
+/* Georilla content: countries, prompts and answer matching. Edit freely.
+
+   Country rows: name | continents | capital(s) | fame 1-5 | tags | aliases
+   tags: L landlocked, I no land borders (islands), E equator, M Mediterranean coast, C Caribbean island,
+   B Baltic coast, R Red Sea coast, P Pacific coast in the Americas, A Andes, D Danube, S Spanish official,
+   O Portuguese official, U uses the euro, T Tropic of Cancer, K Tropic of Capricorn, X Caspian coast */
 const RAW = `Afghanistan|AS|Kabul|4|L|
 Albania|EU|Tirana|3|M|
 Algeria|AF|Algiers|3|MT|
@@ -195,17 +200,7 @@ Yemen|AS|Sanaa|3|R|
 Zambia|AF|Lusaka|2|L|
 Zimbabwe|AF|Harare|3|L|`;
 
-const CAPITAL_ALIASES = { "Kyiv": ["Kiev"], "Washington, D.C.": ["Washington", "Washington DC"], "Ulaanbaatar": ["Ulan Bator"],
-  "Naypyidaw": ["Nay Pyi Taw", "Naypyitaw"], "Sanaa": ["Sana'a"], "Astana": ["Nur-Sultan"], "Malé": ["Male"], "Chișinău": ["Chisinau"],
-  "Nukuʻalofa": ["Nukualofa"], "Port of Spain": ["Port-of-Spain"], "N'Djamena": ["Ndjamena"] };
-
-const COUNTRIES = RAW.split("\n").map(l => {
-  const [name, cont, caps, fame, tags, al] = l.split("|");
-  return { name, cont: cont.split(","), caps: caps.split(";"), fame: +fame, tags: tags || "", aliases: al ? al.split(";") : [] };
-});
-const C = Object.fromEntries(COUNTRIES.map(c => [c.name, c]));
-
-const BORDERS = {
+export const BORDERS: Record<string, string[]> = {
   "China": ["Afghanistan","Bhutan","India","Kazakhstan","North Korea","Kyrgyzstan","Laos","Mongolia","Myanmar","Nepal","Pakistan","Russia","Tajikistan","Vietnam"],
   "Russia": ["Norway","Finland","Estonia","Latvia","Lithuania","Poland","Belarus","Ukraine","Georgia","Azerbaijan","Kazakhstan","China","Mongolia","North Korea"],
   "Brazil": ["Argentina","Bolivia","Colombia","France","Guyana","Paraguay","Peru","Suriname","Uruguay","Venezuela"],
@@ -226,17 +221,76 @@ const BORDERS = {
   "Ukraine": ["Russia","Belarus","Poland","Slovakia","Hungary","Romania","Moldova"]
 };
 
-const CUSTOM = {
+export type ContinentCode = "AF" | "AS" | "EU" | "NA" | "SA" | "OC";
+export type CustomSet = "canadaStates" | "provinces" | "ausStates";
+
+export interface Country {
+  name: string;
+  cont: ContinentCode[];
+  caps: string[];
+  fame: number;
+  tags: string;
+  aliases: string[];
+}
+
+export interface Prompt {
+  id: string;
+  q: string;
+  note?: string;
+  f?: (c: Country) => boolean;
+  capital?: boolean;
+  custom?: CustomSet;
+  parent?: string;
+  boost?: string[];
+}
+
+export interface Answer {
+  label: string;
+  /** country this answer sits in, for the globe */
+  country?: string;
+  /** for capital answers: the country it is the capital of */
+  sub?: string;
+  fame: number;
+  keys: string[];
+  nkeys: string[];
+  /** 0 Common … 4 Silverback */
+  tier: number;
+}
+
+export type Judgement =
+  | { kind: "empty" }
+  | { kind: "ok"; item: Answer }
+  | { kind: "wrong"; name: string }
+  | { kind: "typo"; name: string; item: Answer | null }
+  | { kind: "unknown" };
+
+const CAPITAL_ALIASES: Record<string, string[]> = {
+  "Kyiv": ["Kiev"], "Washington, D.C.": ["Washington", "Washington DC"], "Ulaanbaatar": ["Ulan Bator"],
+  "Naypyidaw": ["Nay Pyi Taw", "Naypyitaw"], "Sanaa": ["Sana'a"], "Astana": ["Nur-Sultan"], "Malé": ["Male"], "Chișinău": ["Chisinau"],
+  "Nukuʻalofa": ["Nukualofa"], "Port of Spain": ["Port-of-Spain"], "N'Djamena": ["Ndjamena"]
+};
+
+export const COUNTRIES: Country[] = RAW.split("\n").map(l => {
+  const [name, cont, caps, fame, tags, al] = l.split("|");
+  return { name, cont: cont.split(",") as ContinentCode[], caps: caps.split(";"), fame: +fame, tags: tags || "", aliases: al ? al.split(";") : [] };
+});
+
+type CustomRow = [name: string, fame: number, aliases?: string[]];
+export const CUSTOM: Record<CustomSet, CustomRow[]> = {
   canadaStates: [["New York",5],["Washington",4,["Washington State"]],["Michigan",4],["Maine",4],["Alaska",4],["Montana",3],["Minnesota",3],["Vermont",3],["North Dakota",3],["Idaho",2],["New Hampshire",2],["Ohio",1],["Pennsylvania",1]],
   provinces: [["Ontario",5],["Quebec",5,["Québec"]],["British Columbia",5,["BC"]],["Alberta",4],["Nova Scotia",3],["Manitoba",3],["Saskatchewan",3],["Newfoundland and Labrador",3,["Newfoundland","Labrador"]],["Yukon",3],["New Brunswick",2],["Prince Edward Island",2,["PEI"]],["Northwest Territories",2,["NWT"]],["Nunavut",2]],
   ausStates: [["New South Wales",5,["NSW"]],["Victoria",4],["Queensland",4],["Western Australia",3,["WA"]],["South Australia",3,["SA"]],["Tasmania",3],["Northern Territory",2,["NT"]],["Australian Capital Territory",1,["ACT"]]]
 };
+const CUSTOM_PARENT: Record<CustomSet, string> = { canadaStates: "United States", provinces: "Canada", ausStates: "Australia" };
 
-const CONT = { AF: "Africa", AS: "Asia", EU: "Europe", NA: "North America", SA: "South America", OC: "Oceania" };
-const has = t => c => c.tags.includes(t);
-const P = [];
-for (const k of ["AF","AS","EU","SA","OC","NA"]) P.push({ id: "cont-" + k, q: `Name a country in ${CONT[k]}`, note: k === "NA" ? "Central America and the Caribbean count." : "", f: c => c.cont.includes(k) });
-for (const k of ["EU","AF","SA"]) P.push({ id: "cap-" + k, q: `Name a capital city in ${CONT[k]}`, f: c => c.cont.includes(k), capital: true });
+const CONT: Record<ContinentCode, string> = { AF: "Africa", AS: "Asia", EU: "Europe", NA: "North America", SA: "South America", OC: "Oceania" };
+const has = (t: string) => (c: Country) => c.tags.includes(t);
+
+export const P: Prompt[] = [];
+for (const k of ["AF", "AS", "EU", "SA", "OC", "NA"] as ContinentCode[])
+  P.push({ id: "cont-" + k, q: `Name a country in ${CONT[k]}`, note: k === "NA" ? "Central America and the Caribbean count." : "", f: c => c.cont.includes(k) });
+for (const k of ["EU", "AF", "SA"] as ContinentCode[])
+  P.push({ id: "cap-" + k, q: `Name a capital city in ${CONT[k]}`, f: c => c.cont.includes(k), capital: true });
 P.push(
   { id: "L", q: "Name a landlocked country", f: has("L") },
   { id: "I", q: "Name a country with no land borders", note: "Island nations, basically.", f: has("I") },
@@ -258,90 +312,97 @@ P.push(
   { id: "land", q: "Name a country ending in “-land”", f: c => c.name.endsWith("land") },
   { id: "ia", q: "Name a country ending in “-ia”", f: c => c.name.endsWith("ia") }
 );
-for (const L of ["B","S","M","C","G","N","P","T","A","L","K"]) P.push({ id: "letter-" + L, q: `Name a country starting with “${L}”`, f: c => c.name[0] === L });
-for (const k of Object.keys(BORDERS)) P.push({ id: "border-" + k, q: `Name a country that borders ${k === "DR Congo" ? "the DR Congo" : k}`, note: k === "France" || k === "Brazil" ? "Overseas territories count." : "", f: c => BORDERS[k].includes(c.name),
-  boost: { France: ["Brazil","Suriname","Netherlands"], Brazil: ["France"] }[k] });
+for (const L of ["B", "S", "M", "C", "G", "N", "P", "T", "A", "L", "K"])
+  P.push({ id: "letter-" + L, q: `Name a country starting with “${L}”`, f: c => c.name[0] === L });
+const BOOSTS: Record<string, string[]> = { France: ["Brazil", "Suriname", "Netherlands"], Brazil: ["France"] };
+for (const k of Object.keys(BORDERS))
+  P.push({ id: "border-" + k, q: `Name a country that borders ${k === "DR Congo" ? "the DR Congo" : k}`,
+    note: k in BOOSTS ? "Overseas territories count." : "", f: c => BORDERS[k].includes(c.name), boost: BOOSTS[k] });
 P.push(
-  { id: "us-canada", q: "Name a US state that borders Canada", note: "Water borders on the Great Lakes count.", custom: "canadaStates", parent: "United States" },
-  { id: "provinces", q: "Name a Canadian province or territory", custom: "provinces", parent: "Canada" },
-  { id: "aus", q: "Name an Australian state or territory", custom: "ausStates", parent: "Australia" }
+  { id: "us-canada", q: "Name a US state that borders Canada", note: "Water borders on the Great Lakes count.", custom: "canadaStates", parent: CUSTOM_PARENT.canadaStates },
+  { id: "provinces", q: "Name a Canadian province or territory", custom: "provinces", parent: CUSTOM_PARENT.provinces },
+  { id: "aus", q: "Name an Australian state or territory", custom: "ausStates", parent: CUSTOM_PARENT.ausStates }
 );
 
-const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/ʻ|'|’|\./g, "")
+/** Lower-case, strip accents and punctuation, and even out "St"/"Saint", "the" and "and". */
+export const norm = (s: string): string => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/ʻ|'|’|\./g, "")
   .replace(/[^a-z0-9]+/g, " ").trim().replace(/^the /, "").replace(/^st /, "saint ").replace(/ and /g, " ");
 
-// Answers for a prompt: [{label, fame, keys[]}], each tagged with tier by fame rank within the set.
-function answersFor(p){
-  let items;
+/** Every right answer for a prompt, each tagged with a tier by its fame rank within the set. */
+export function answersFor(p: Prompt): Answer[] {
+  let items: Omit<Answer, "tier" | "nkeys">[];
   if (p.custom) items = CUSTOM[p.custom].map(([n, f, al]) => ({ label: n, fame: f, keys: [n, ...(al || [])], country: p.parent }));
-  else items = COUNTRIES.filter(p.f).map(c => p.capital
-      ? { label: c.caps[0], sub: c.name, country: c.name, fame: c.fame, keys: c.caps.flatMap(x => [x, ...(CAPITAL_ALIASES[x] || [])]) }
-      : { label: c.name, country: c.name, fame: c.fame, keys: [c.name, ...c.aliases] });
+  else items = COUNTRIES.filter(p.f!).map(c => p.capital
+    ? { label: c.caps[0], sub: c.name, country: c.name, fame: c.fame, keys: c.caps.flatMap(x => [x, ...(CAPITAL_ALIASES[x] || [])]) }
+    : { label: c.name, country: c.name, fame: c.fame, keys: [c.name, ...c.aliases] });
   items.sort((a, b) => b.fame - a.fame || a.label.localeCompare(b.label));
-  const n = items.length;
+  const n = items.length, out: Answer[] = items.map(it => ({ ...it, tier: 0, nkeys: it.keys.map(norm) }));
   // tie groups share the average rank, so equally famous answers get the same tier
   let i = 0;
   while (i < n) {
-    let j = i; while (j < n && items[j].fame === items[i].fame) j++;
+    let j = i; while (j < n && out[j].fame === out[i].fame) j++;
     const avg = (i + j - 1) / 2, pct = n > 1 ? avg / (n - 1) : 0;
-    for (let k = i; k < j; k++) items[k].tier = Math.min(4, Math.floor(pct * 5));
+    for (let k = i; k < j; k++) out[k].tier = Math.min(4, Math.floor(pct * 5));
     i = j;
   }
-  (p.boost || []).forEach(b => { const it = items.find(x => x.label === b); if (it) it.tier = 4; });
-  items.forEach(it => it.nkeys = it.keys.map(norm));
-  return items;
+  (p.boost || []).forEach(b => { const it = out.find(x => x.label === b); if (it) it.tier = 4; });
+  return out;
 }
-// every known name, to tell "wrong answer" from "not recognized"
-const KNOWN = new Map();
+
+// every known name, to tell "wrong answer" from "not recognised"
+const KNOWN = new Map<string, string>();
 COUNTRIES.forEach(c => { [c.name, ...c.aliases].forEach(k => KNOWN.set(norm(k), c.name)); c.caps.forEach(k => KNOWN.set(norm(k), k)); });
 Object.values(CUSTOM).flat().forEach(([n, , al]) => [n, ...(al || [])].forEach(k => KNOWN.set(norm(k), n)));
 Object.entries(CAPITAL_ALIASES).forEach(([cap, al]) => al.forEach(a => KNOWN.set(norm(a), cap)));
 
-// which country a known name sits in, so the globe can point at a wrong answer
-const PLACE_COUNTRY = {};
+/** Which country a known place sits in, so the globe can point at a wrong answer. */
+export const PLACE_COUNTRY: Record<string, string> = {};
 COUNTRIES.forEach(c => { PLACE_COUNTRY[c.name] = c.name; c.caps.forEach(k => PLACE_COUNTRY[k] = c.name); });
-CUSTOM.canadaStates.forEach(([n]) => PLACE_COUNTRY[n] = "United States");
-CUSTOM.provinces.forEach(([n]) => PLACE_COUNTRY[n] = "Canada");
-CUSTOM.ausStates.forEach(([n]) => PLACE_COUNTRY[n] = "Australia");
+(Object.keys(CUSTOM) as CustomSet[]).forEach(set => CUSTOM[set].forEach(([n]) => PLACE_COUNTRY[n] = CUSTOM_PARENT[set]));
 
-// every display name, for the type-ahead list (it lists all places, so it gives nothing away)
-const ALL_NAMES = [...new Set([...COUNTRIES.map(c => c.name), ...COUNTRIES.flatMap(c => c.caps), ...Object.values(CUSTOM).flat().map(x => x[0])])]
+export interface NameEntry { n: string; k: string; alts: string[] }
+/** Every display name, for the type-ahead list. It lists all places, so it gives nothing away. */
+export const ALL_NAMES: NameEntry[] = [...new Set([...COUNTRIES.map(c => c.name), ...COUNTRIES.flatMap(c => c.caps), ...Object.values(CUSTOM).flat().map(x => x[0])])]
   .map(n => ({ n, k: norm(n), alts: (COUNTRIES.find(c => c.name === n)?.aliases || []).map(norm) }));
 
-// a short label for the kind of prompt, shown as a chip above it
-function category(p){
-  const id = p.id;
+/** A short label for the kind of prompt, shown as a chip above it. */
+export function category(p: Prompt): string {
+  const id = p.id, one = id.length === 1;
   if (id.startsWith("cont-")) return "Continents";
   if (id.startsWith("cap-")) return "Capitals";
   if (id.startsWith("border-")) return "Neighbours";
-  if (id.startsWith("letter-") || ["stan","land","ia"].includes(id)) return "Wordplay";
-  if ("MBRXC".includes(id) && id.length === 1) return "Coasts & seas";
-  if ("ETK".includes(id) && id.length === 1) return "Lines on the map";
-  if ("LI".includes(id) && id.length === 1) return "Land & islands";
-  if ("SOU".includes(id) && id.length === 1) return "Language & money";
-  if ("AD".includes(id) && id.length === 1) return "Rivers & ranges";
+  if (id.startsWith("letter-") || ["stan", "land", "ia"].includes(id)) return "Wordplay";
+  if (one && "MBRXC".includes(id)) return "Coasts & seas";
+  if (one && "ETK".includes(id)) return "Lines on the map";
+  if (one && "LI".includes(id)) return "Land & islands";
+  if (one && "SOU".includes(id)) return "Language & money";
+  if (one && "AD".includes(id)) return "Rivers & ranges";
   return "States & provinces";
 }
 
-function lev(a, b){ const d = Array.from({length: a.length + 1}, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j;
-  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[a.length][b.length]; }
+export function lev(a: string, b: string): number {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
 
-function judge(items, raw){
+/** Check a typed guess against a prompt's answers. */
+export function judge(items: Answer[], raw: string): Judgement {
   const g = norm(raw); if (!g) return { kind: "empty" };
-  let hit = items.find(it => it.nkeys.includes(g));
+  const hit = items.find(it => it.nkeys.includes(g));
   if (hit) return { kind: "ok", item: hit };
-  if (KNOWN.has(g)) return { kind: "wrong", name: KNOWN.get(g) };
-  // forgive small typos on longer names, only when the closest real name is unambiguous
+  if (KNOWN.has(g)) return { kind: "wrong", name: KNOWN.get(g)! };
+  // forgive small typos on longer names, only when the closest real name is unambiguous; the player confirms it
   const tol = g.length >= 10 ? 2 : g.length >= 7 ? 1 : 0;
   if (tol) {
-    let best = tol + 1, near = new Set();
+    let best = tol + 1, near = new Set<string>();
     for (const [k, v] of KNOWN) { const d = lev(k, g); if (d < best) { best = d; near = new Set([v]); } else if (d === best) near.add(v); }
     if (best <= tol && near.size === 1) {
       const v = [...near][0], nv = norm(v);
-      hit = items.find(it => it.nkeys.includes(nv) || it.label === v || it.sub === v);
-      return { kind: "typo", name: v, item: hit || null };
+      return { kind: "typo", name: v, item: items.find(it => it.nkeys.includes(nv) || it.label === v || it.sub === v) || null };
     }
   }
   return { kind: "unknown" };
 }
-
