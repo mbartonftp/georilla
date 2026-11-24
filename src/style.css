@@ -131,9 +131,9 @@ p { margin: 0; }
 /* intro */
 .intro h1 { font-size: 2.1rem; }
 .ladder-h { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-.lrung { border-radius: 10px; padding: 8px 4px; text-align: center; background: rgba(255,255,255,.04); border: 1.5px solid currentColor; min-width: 0; }
+.lrung { border-radius: 10px; padding: 8px 2px; text-align: center; background: rgba(255,255,255,.04); border: 1.5px solid currentColor; min-width: 0; }
 .lrung b { display: block; font-family: var(--display); font-weight: 400; font-size: 1.2rem; line-height: 1; }
-.lrung span { display: block; font-size: .7rem; margin-top: 3px; font-weight: 500; }
+.lrung span { display: block; font-size: min(.7rem, 2.3vw); letter-spacing: -.01em; margin-top: 3px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: clip; }
 .c0 { color: var(--t0); } .c1 { color: var(--t1); } .c2 { color: var(--t2); } .c3 { color: var(--t3); } .c4 { color: var(--t4); }
 .statline { font-size: .9rem; color: var(--moss); }
 .statline b { color: var(--mist); }
@@ -229,6 +229,7 @@ footer { text-align: center; font-size: .78rem; color: #5f7f70; }
   .reveal-grid { grid-template-columns: 96px 1fr; gap: 12px; }
   .stats b { font-size: 1.3rem; }
   .logo { font-size: 1.7rem; }
+  .ladder-h { gap: 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
