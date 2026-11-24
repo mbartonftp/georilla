@@ -62,6 +62,8 @@ export interface Prompt {
   parent?: string;
   /** right but rarely thought of in this context (Brazil bordering France); always Silverback */
   trick?: string[];
+  /** wordplay prompts: only names passing this test are accepted ("Timor-Leste" for T, not "East Timor") */
+  spell?: (name: string) => boolean;
 }
 
 export interface Answer {

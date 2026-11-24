@@ -244,10 +244,12 @@ export function startGame(): void {
   }
   function answerFills(i: number): Map<string, string> {
     const m = new Map<string, string>(), p = SET[i];
-    if (p.custom) { if (p.parent) m.set(p.parent, TIER_MAP[2]); return m; }
+    if (p.kind === "region") { if (p.parent) m.set(p.parent, TIER_MAP[2]); return m; }
     ITEMS[i].forEach(it => { if (it.country) m.set(it.country, TIER_MAP[it.tier]); });
     return m;
   }
+  /** a predicted share, in words: "about 1 in 4 players" */
+  const shareWords = (x: number) => (x >= 0.095 ? `about ${Math.round(x * 100)}% of players` : x >= 0.01 ? `about 1 in ${Math.round(1 / x)} players` : "fewer than 1 in 100 players");
   const ladderRung = (k: number) => $("ladder").children[k] as HTMLElement;
 
   async function renderReveal(i: number, why: string | undefined, animate: boolean): Promise<void> {
@@ -288,7 +290,8 @@ export function startGame(): void {
     $("vtier").textContent = tierName; $("vtier").className = `vtier c${r.tier}` + (animate ? " stamp" : "");
     $("vpts").textContent = "+" + pts;
     const same = items.filter(it => it.tier === r.tier).length - 1;
-    $("vline").innerHTML = `<b>${esc(r.label)}</b> is one of ${items.length} right answers. ${same ? `${same} other${same === 1 ? "" : "s"} share its tier.` : "No other answer shares its tier."}`;
+    const mine = items.find(it => it.label === r.label);
+    $("vline").innerHTML = `<b>${esc(r.label)}</b> is one of ${items.length} right answers. ${mine ? `We reckon ${shareWords(mine.share)} would say it. ` : ""}${same ? `${same} other${same === 1 ? "" : "s"} share its tier.` : "No other answer shares its tier."}`;
     if (top.length) $("alsos").innerHTML = `${r.tier === 4 ? "Other Silverback answers" : "Silverback answers"} included <span>${esc(listJoin(top))}</span>.`;
     $("live").textContent = `${tierName}, plus ${pts} points.`;
 
