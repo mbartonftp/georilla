@@ -16,7 +16,12 @@ const POP_FALLBACK: Record<string, [pop: number, year: number, source: string]> 
   VAT: [882, 2023, "Vatican City State"]
 };
 /** Currency changes newer than the source data. */
-const CURRENCY_FIX: Record<string, string[]> = { BGR: ["Euro"] /* Bulgaria joined the euro on 1 Jan 2026 */ };
+const CURRENCY_FIX: Record<string, string[]> = {
+  BGR: ["Euro"], // joined the euro on 1 Jan 2026
+  ZWE: ["United States dollar", "Zimbabwe Gold"] // the source still lists the 2009–2019 multi-currency basket
+};
+/** Errors in the source's land borders. */
+const NOT_BORDERS: [string, string][] = [["LKA", "IND"]];
 
 interface Mledoze {
   cca3: string; name: { common: string; native?: Record<string, { common: string; official: string }> };
@@ -49,7 +54,7 @@ async function main() {
       .filter(s => latin(s) && !known.has(s.toLowerCase()));
     out[c.name] = {
       area: x.area, pop: p[0], popYear: p[1], landlocked: x.landlocked,
-      borders: x.borders.map(b => nameOf.get(b)).filter((b): b is string => !!b).sort(),
+      borders: x.borders.filter(b => !NOT_BORDERS.some(([a, z]) => (a === c.iso3 && z === b) || (z === c.iso3 && a === b))).map(b => nameOf.get(b)).filter((b): b is string => !!b).sort(),
       languages: Object.values(x.languages || {}).sort(),
       currencies: CURRENCY_FIX[c.iso3] || Object.values(x.currencies || {}).map(k => k.name).sort(),
       alt, latlng: x.latlng

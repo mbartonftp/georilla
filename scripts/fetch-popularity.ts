@@ -7,13 +7,16 @@ import { COUNTRIES } from "../src/data/countries";
 import { REGION_SETS } from "../src/data/regions";
 
 const UA = "GeorillaDataBuild/1.0 (https://github.com/mbartonftp/georilla)";
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 const get = async (url: string): Promise<unknown> => {
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(url, { headers: { "User-Agent": UA, "Api-User-Agent": UA } });
     if (res.ok) return res.json();
     if (res.status === 404) return null;
-    if (attempt >= 4) throw new Error(`${res.status} ${url}`);
-    await new Promise(r => setTimeout(r, 1000 * 2 ** attempt));
+    if (attempt >= 8) throw new Error(`${res.status} ${url}`);
+    // Wikimedia rate-limits bursts; back off, honouring Retry-After when given
+    const wait = Number(res.headers.get("retry-after")) * 1000 || 1000 * 2 ** Math.min(attempt, 5);
+    await sleep(wait);
   }
 };
 
@@ -51,6 +54,7 @@ async function main() {
   const views: Record<string, number> = {};
   for (const [t, to] of canonical) {
     const art = encodeURIComponent(to.replace(/ /g, "_"));
+    await sleep(250); // stay well under the API's rate limit
     const r = (await get(`https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/${art}/monthly/${ymd(start)}/${ymd(end)}`)) as { items?: { views: number }[] } | null;
     if (!r?.items?.length) { problems.push(`no pageviews: ${t}`); continue; }
     views[t] = r.items.reduce((s, x) => s + x.views, 0);
