@@ -4,9 +4,7 @@
 export const VIEWS_PERIOD = "2021-11 to 2026-10";
 
 /** Titles that couldn't be looked up; should be empty. */
-export const VIEW_PROBLEMS: string[] = [
-  "missing: Urban Honolulu CDP, Hawaii"
-];
+export const VIEW_PROBLEMS: string[] = [];
 
 export const VIEWS: Record<string, number> = {
   "Abilene, Texas": 188027,
