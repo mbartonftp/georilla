@@ -25,7 +25,7 @@ const RENAME: Record<string, string> = {
   "Boise City": "Boise", "San Buenaventura (Ventura)": "Ventura", "Urban Honolulu": "Honolulu"
 };
 
-const decode = (buf: ArrayBuffer): string => {
+const decode = (buf: ArrayBuffer | Uint8Array): string => {
   const utf8 = new TextDecoder("utf-8").decode(buf);
   return utf8.includes("�") ? new TextDecoder("latin1").decode(buf) : utf8;
 };
@@ -61,7 +61,7 @@ async function main() {
 
   const dir = mkdtempSync(join(tmpdir(), "gaz-")), zip = join(dir, "gaz.zip");
   writeFileSync(zip, Buffer.from(await fetchBuf(GAZETTEER)));
-  const gaz = decode(new Uint8Array(execFileSync("unzip", ["-p", zip])).buffer).trim().split(/\r?\n/);
+  const gaz = decode(execFileSync("unzip", ["-p", zip], { maxBuffer: 1 << 30 })).trim().split(/\r?\n/);
   const gh = gaz[0].split("\t").map(s => s.trim()), gi = (k: string) => gh.indexOf(k);
   const where = new Map<string, [number, number]>();
   for (const line of gaz.slice(1)) {
