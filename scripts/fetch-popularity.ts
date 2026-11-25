@@ -5,6 +5,8 @@
 import { writeFileSync } from "node:fs";
 import { COUNTRIES } from "../src/data/countries";
 import { REGION_SETS } from "../src/data/regions";
+import { PARKS, cityWiki } from "../src/data/us";
+import { US_CITIES } from "../src/data/us.gen";
 
 const YEARS = 5;
 const UA = "GeorillaDataBuild/1.0 (https://github.com/mbartonftp/georilla)";
@@ -32,7 +34,9 @@ interface QueryResult {
 async function main() {
   const titles = [...new Set([
     ...COUNTRIES.flatMap(c => [c.wiki, ...c.caps.map(k => k.wiki)]),
-    ...Object.values(REGION_SETS).flat().map(r => r.wiki)
+    ...Object.values(REGION_SETS).flat().map(r => r.wiki),
+    ...US_CITIES.map(c => cityWiki(c.name, c.state)),
+    ...PARKS.map(p => p.wiki)
   ])].sort();
   // follow redirects to the real article, and catch disambiguation pages
   const canonical = new Map<string, string>(), problems: string[] = [];

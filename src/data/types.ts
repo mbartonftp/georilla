@@ -1,5 +1,8 @@
 /* Shared types for Georilla's knowledge base. */
 
+/** [longitude, latitude] in degrees */
+export type LonLat = [number, number];
+
 export type ContinentCode = "AF" | "AS" | "EU" | "NA" | "SA" | "OC";
 
 export interface Capital {
