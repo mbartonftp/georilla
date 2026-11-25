@@ -12,7 +12,7 @@ export const EMOJI = ["⬜", "🟦", "🟩", "🟪", "🟨"] as const;
 export const MISS = "⬛";
 const RANKS: [min: number, name: string][] = [[0, "Tourist"], [150, "Trekker"], [300, "Explorer"], [450, "Cartographer"], [600, "King of the Jungle"]];
 
-export interface Result { label: string; tier: number; country: string | null }
+export interface Result { label: string; tier: number; country: string | null; ll?: [number, number] }
 
 export function mulberry32(a: number): () => number {
   return () => {
@@ -44,7 +44,8 @@ export const points = (r: Result | null): number => (r ? TIERS[r.tier][1] : 0);
 export const totalOf = (results: (Result | null)[]): number => results.reduce((s, r) => s + points(r), 0);
 export const rankFor = (score: number): string => RANKS.filter(([min]) => score >= min).pop()![1];
 
-export function shareText(results: (Result | null)[], label: string, site: string): string {
+/** The share line. `game` names a side game ("USA", "Capitals"); the main game has none. */
+export function shareText(results: (Result | null)[], label: string, site: string, game = ""): string {
   const tot = totalOf(results);
-  return `Georilla ${label} 🦍 ${tot}/${MAX}\n${rankFor(tot)}\n` + results.map(r => (r ? EMOJI[r.tier] : MISS)).join("") + `\n${site}`;
+  return `Georilla ${game ? game + " " : ""}${label} 🦍 ${tot}/${MAX}\n${rankFor(tot)}\n` + results.map(r => (r ? EMOJI[r.tier] : MISS)).join("") + `\n${site}`;
 }

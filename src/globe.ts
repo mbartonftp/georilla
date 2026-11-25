@@ -5,9 +5,10 @@ import { easeCubicInOut } from "d3-ease";
 import { feature, merge, mesh } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import type { Feature, Geometry, MultiLineString, MultiPolygon } from "geojson";
-import { ATLAS_NAME, COUNTRIES } from "./data";
+import { ATLAS_NAME, COUNTRIES, type LonLat } from "./data";
+import type { Dot, MapView } from "./mapview";
 
-export type LonLat = [number, number];
+export type { LonLat };
 
 // where to point for countries whose shape centroid lands somewhere unhelpful (overseas parts, dateline, missing shape)
 const CENTER: Record<string, LonLat> = {
@@ -28,7 +29,7 @@ export function hexA(hex: string, a: number): string {
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${Math.max(0, a).toFixed(3)})`;
 }
 
-export class Globe {
+export class Globe implements MapView {
   readonly loaded: Promise<void>;
   private ctx: CanvasRenderingContext2D;
   private proj = geoOrthographic().clipAngle(90).precision(0.6);
@@ -39,7 +40,7 @@ export class Globe {
   private spin = true; private anim: Flight | null = null; private last = performance.now();
   private land: MultiPolygon | null = null; private borders: MultiLineString | null = null;
   private shapes: Record<string, Feature<Geometry>> = {}; private centers: Record<string, LonLat> = {};
-  private fills = new Map<string, string>(); private pin: Pin | null = null;
+  private fills = new Map<string, string>(); private dots: Dot[] = []; private pin: Pin | null = null; private active = true;
   private flashing: { name: string; color: string; t0: number; until: number } | null = null;
   private dragging: { x: number; y: number; rot: [number, number, number] } | null = null;
   private reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -108,6 +109,11 @@ export class Globe {
         const [x, y] = this.proj(ll)!; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
         ctx.lineWidth = 1; ctx.strokeStyle = "rgba(10,30,20,.6)"; ctx.stroke();
       }
+      for (const d of this.dots) {
+        if (!this.visible(d.ll)) continue;
+        const [x, y] = this.proj(d.ll)!; ctx.beginPath(); ctx.arc(x, y, 3.6, 0, Math.PI * 2); ctx.fillStyle = d.color; ctx.fill();
+        ctx.lineWidth = 1.4; ctx.strokeStyle = "#0b2a20"; ctx.stroke();
+      }
     }
     // shading for depth
     g = ctx.createRadialGradient(c - r * .4, c - r * .45, r * .2, c, c, r * 1.02);
@@ -131,6 +137,7 @@ export class Globe {
 
   private frame(now: number): void {
     const dt = Math.min(60, now - this.last); this.last = now;
+    if (!this.active) { requestAnimationFrame(t => this.frame(t)); return; }
     const a = this.anim;
     if (a) {
       const t = Math.min(1, (now - a.t0) / a.dur), e = easeCubicInOut(t);
@@ -168,24 +175,26 @@ export class Globe {
     cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
   }
 
+  setActive(on: boolean): void { this.active = on; this.canvas.hidden = !on; if (on) { this.resize(); this.last = performance.now(); } }
   setSpin(on: boolean): void { this.spin = on; }
   setFills(map: Iterable<[string, string]>): void { this.fills = new Map(map); }
-  clear(): void { this.fills = new Map(); this.pin = null; this.flashing = null; }
+  setDots(dots: Dot[]): void { this.dots = dots; }
+  clear(): void { this.fills = new Map(); this.dots = []; this.pin = null; this.flashing = null; }
   unfocus(): void { this.pin = null; }
-  focus(name: string | null | undefined, color: string, label?: string): void {
-    const ll = this.center(name);
+  focus(name: string | null | undefined, color: string, label?: string, at?: LonLat): void {
+    const ll = at || this.center(name);
     this.pin = ll ? { ll, color, label, t0: performance.now() } : null;
     if (label) { this.labelEl.textContent = label; this.labelEl.classList.remove("bad"); }
   }
-  flash(name: string, color: string, label?: string): Promise<void> {
-    const ll = this.center(name); if (!ll) return Promise.resolve();
+  flash(name: string, color: string, label?: string, at?: LonLat): Promise<void> {
+    const ll = at || this.center(name); if (!ll) return Promise.resolve();
     const now = performance.now();
     this.flashing = { name, color, t0: now, until: now + 1400 };
     this.pin = { ll, color, label, t0: now };
     this.labelEl.textContent = label || name; this.labelEl.classList.add("bad");
     return this.flyTo(ll, { dur: 650 });
   }
-  flyToName(name: string | null | undefined, opts?: { dur?: number }): Promise<void> { return this.flyTo(this.center(name), opts); }
+  flyToName(name: string | null | undefined, opts?: { dur?: number }, at?: LonLat): Promise<void> { return this.flyTo(at || this.center(name), opts); }
   /** Fly to the middle of a group of countries, so a whole answer set comes into view. */
   flyToMany(names: string[], opts?: { dur?: number }): Promise<void> {
     let x = 0, y = 0, z = 0, n = 0;
