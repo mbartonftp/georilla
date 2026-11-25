@@ -4,7 +4,9 @@ import {
   answersFor, category, countryKeys, judge, norm
 } from "../src/data";
 import { VIEW_PROBLEMS } from "../src/data/popularity.gen";
-import { BANDS, rate } from "../src/data/rarity";
+import { NUDGE } from "../src/data/familiarity";
+import { BANDS, blend, fitScale, rate } from "../src/data/rarity";
+import { WORD_SKIPPED, WORD_ZIPF } from "../src/data/wordfreq.gen";
 
 const prompt = (id: string) => {
   const p = P.find(x => x.id === id);
@@ -116,7 +118,10 @@ describe("popularity data", () => {
 describe("rarity", () => {
   it("splits predicted guesses into bands", () => {
     expect(rate([50, 25, 15, 7, 3]).map(r => r.tier)).toEqual([0, 1, 2, 3, 4]);
-    expect(rate([1, 1, 1]).map(r => r.tier)).toEqual([1, 1, 1]);
+    // tiers count the guesses that go to likelier answers, so equally likely answers are all Common
+    expect(rate([1, 1, 1]).map(r => r.tier)).toEqual([0, 0, 0]);
+    // a strong runner-up stays Familiar behind a dominant favourite
+    expect(rate([70, 20, 10]).map(r => r.tier)).toEqual([0, 1, 2]);
     expect(rate([90, 8, 5], [false, false, true]).map(r => r.tier)).toEqual([0, 3, 4]);
     expect(rate([3, 1]).reduce((s, r) => s + r.share, 0)).toBeCloseTo(1);
     expect(BANDS.length).toBe(4);
@@ -124,7 +129,7 @@ describe("rarity", () => {
   it("makes the likeliest answer Common and never rates a likelier answer rarer", () => {
     for (const p of P) {
       const items = answersFor(p), plain = items.filter(a => !p.trick?.includes(p.kind === "country" ? a.country! : a.label));
-      expect(items[0].tier, p.id).toBeLessThanOrEqual(1);
+      expect(items[0].tier, p.id).toBe(0);
       for (let i = 1; i < plain.length; i++) expect(plain[i].tier, `${p.id}: ${plain[i].label}`).toBeGreaterThanOrEqual(plain[i - 1].tier);
     }
   });
@@ -137,6 +142,27 @@ describe("rarity", () => {
     expect(tierOf("cap-EU", "Chișinău")).toBe(4);
     expect(tierOf("us-states", "California")).toBe(0);
     expect(tierOf("us-states", "North Dakota")).toBeGreaterThanOrEqual(3);
+  });
+  it("blends word frequency into familiarity", () => {
+    const tierOf = (id: string, n: string) => answersFor(prompt(id)).find(i => i.label === n)!.tier;
+    // runners-up behind a dominant answer
+    expect(tierOf("cont-OC", "New Zealand")).toBeLessThanOrEqual(1);
+    expect(tierOf("cont-NA", "Mexico")).toBeLessThanOrEqual(1);
+    // trivia favourites with lots of pageviews but few mentions
+    for (const n of ["Tuvalu", "Kiribati"]) expect(tierOf("cont-OC", n), n).toBe(4);
+    expect(tierOf("cont-EU", "Andorra")).toBe(4);
+    expect(tierOf("cont-EU", "Ireland")).toBeLessThan(tierOf("cont-EU", "Azerbaijan"));
+    // a wordplay answer that only fits under a rarely used name is rare
+    expect(answersFor(prompt("letter-P")).find(i => i.label === "PRC")!.tier).toBe(4);
+  });
+  it("has word frequencies for every country, capital and region, or says why not", () => {
+    const titles = [...COUNTRIES.flatMap(c => [c.wiki, ...c.caps.map(k => k.wiki)]), ...Object.values(REGION_SETS).flat().map(r => r.wiki)];
+    expect(titles.filter(t => !(t in WORD_ZIPF) && !(t in WORD_SKIPPED))).toEqual([]);
+    expect(Object.keys(NUDGE).filter(t => !(t in VIEWS))).toEqual([]);
+    // the blend keeps pageviews' scale
+    const scale = fitScale([[5, 2], [6, 3], [7, 4]]);
+    expect(Math.log10(blend(1e6, 3, scale))).toBeCloseTo(6);
+    expect(Math.log10(blend(1e6, undefined, scale, 0.4))).toBeCloseTo(6.2);
   });
   it("applies trick answers", () => {
     expect(answersFor(prompt("border-france")).find(i => i.label === "Brazil")!.tier).toBe(4);

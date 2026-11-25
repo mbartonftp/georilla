@@ -21,13 +21,22 @@ Play it at https://mbartonftp.github.io/georilla/
 
 ## How rarity works
 
-There are no player counts yet, so Georilla predicts them. It assumes the chance that a player names a place is proportional to how often that place's English Wikipedia article is read: Paris is read far more than Chișinău, and far more players will think of it. Pageviews are averaged over five years to smooth out news spikes, raised to a power of 1.5 to sharpen the gap between famous and obscure places, and, for countries, multiplied by population to the power 0.25, because big countries come to mind even when few people read about them. Each right answer's predicted share is that weight over the total for all the prompt's answers.
+There are no player counts yet, so Georilla predicts them, the way [Krillion](https://krillion.io/faq) does: from how familiar each name is. The chance that a player names a place is taken to be proportional to its familiarity, which blends two measures:
 
-The answers are then sorted from most to least likely and tiered by cumulative share. The answers that make up the first 50% of predicted guesses are Common, the next 25% Familiar, the next 15% Uncommon and the next 7% Rare. The last 3% are Silverback, so a Silverback answer is one that fewer than about one player in thirty would give. Small prompts with evenly known answers have fewer Silverbacks; big prompts with a long tail have more. The constants live in `src/data/rarity.ts`.
+- **How often its English Wikipedia article is read**, averaged over five years to smooth out news spikes.
+- **How often its name is written in everyday English**, from the [wordfreq](https://github.com/rspeer/wordfreq) dataset (books, news, film subtitles, the web and social media). This is used for countries, capitals, US states and the other countries' states and provinces.
+
+Each signal covers the other's blind spot. Pageviews overrate places people look up out of curiosity, like Tuvalu, Liechtenstein or Andorra, and barely separate similar places: almost every US state gets around a million views a year. Word frequency overrates names that are also everyday words or people, like Chad, Turkey or Jordan, so those names keep pageviews alone, as do multi-word names whose telling word is shared (North and South Carolina) or ordinary (St. John's). The word counts are mapped onto the pageview scale, and the two are averaged on a log scale. A place without a usable word count is moved by the average amount its peers were, so leaving it out doesn't push it up or down the list. US cities and national parks use pageviews alone, because so many of their names are ordinary words (Independence, Surprise, Olympic).
+
+A short hand-review list in `src/data/familiarity.ts` covers what neither measure can see, each with its reason. For example, the Grand Canyon's fame lives in the canyon's article rather than the park's, and Maryland's pageviews look inflated by automated traffic. The same file lists the names whose word counts are skipped.
+
+Each answer's weight is its familiarity raised to the power 1.25, which sharpens the gap between famous and obscure places. For countries and US cities, that's multiplied by population to the power 0.25, because big places come to mind even when few people read or write about them. Each right answer's predicted share is its weight over the total for all the prompt's answers. In wordplay prompts, an answer that only fits under another name (Burma for "B") is weighted by how often that name is written, and initials like PRC count for a tenth.
+
+The answers are then sorted from most to least likely and tiered by how many guesses would go to likelier answers. An answer is Common while fewer than 50% of predicted guesses go to likelier answers, Familiar under 75%, Uncommon under 90% and Rare under 97%. Beyond that it's Silverback: more than 97% of players would name something more obvious. Counting only the likelier answers means a strong runner-up, like New Zealand behind Australia, isn't marked down just because the favourite takes most of the guesses. The constants live in `src/data/rarity.ts`.
 
 Some answers are right but rarely thought of in context, like Brazil bordering France through French Guiana. Prompts list these as `trick` answers, which are always Silverback.
 
-Once there are real players, their answer counts can be blended into the same weights.
+All of this is fixed data built into the site, so scores never change during the day. Once there are real players, their answer counts can be blended into the same weights.
 
 ## The USA game
 
@@ -47,6 +56,7 @@ Every answer is a capital. Most prompts are the World game's country prompts rew
 - **US facts** (`src/data/us.ts`): the 50 states with their capitals, neighbours, Census regions and the year they joined, the 10 largest and smallest by area, and the 63 national parks with where they are.
 - **US cities** (`src/data/us.gen.ts`, regenerate with `npm run data:us`): every city of 100,000 people or more, plus every state capital and each state's biggest city, with 2024 population estimates and locations from the US Census Bureau. It also holds state populations. census.gov isn't reachable from every machine, so the **Refresh popularity** GitHub Action runs this too.
 - **Popularity** (`src/data/popularity.gen.ts`): the average yearly English Wikipedia pageviews, over five years, for every country, capital, region, US city and national park. Wikipedia's API isn't reachable from every machine, so the **Refresh popularity** GitHub Action (`.github/workflows/refresh-popularity.yml`) fetches it and commits the result. It runs on a branch whenever the list of places changes, every January, and on demand. You can also run `npm run data:popularity` locally. For US cities, rarity also counts population to the power 0.25, as for countries.
+- **Word frequency** (`src/data/wordfreq.gen.ts`, regenerate with `npm run data:wordfreq`): how often each country, capital, state and province is written in English, as a Zipf value, from [wordfreq](https://github.com/rspeer/wordfreq) 3.2 by Robyn Speer. wordfreq's data is licensed [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), and so is this file. The script downloads it from GitHub. Rerun it when places are added; a test fails until every place is either scored or listed as skipped.
 
 The tests check this data hard: borders are symmetric and match the shared edges of the map shapes, the equator, tropics, Arctic Circle and Prime Meridian lists match the real country outlines, no landlocked country appears on a coast, no typed name can mean two answers, every place has pageview data, and every prompt has at least five answers. For the USA game, the tests check state borders against the shared edges of the US map shapes, that every city and capital sits inside its state, and that there are exactly 63 national parks.
 
@@ -64,6 +74,7 @@ npm run data:world       # regenerate open-data country facts (src/data/world.ge
 npm run data:popularity  # regenerate Wikipedia pageviews (src/data/popularity.gen.ts); needs access to Wikipedia
 npm run data:us          # regenerate US city data (src/data/us.gen.ts); needs access to census.gov
 npm run data:capitals    # regenerate capital locations (src/data/capitals.gen.ts)
+npm run data:wordfreq    # regenerate word frequencies (src/data/wordfreq.gen.ts) from wordfreq on GitHub
 ```
 
 GitHub Actions (`.github/workflows/deploy.yml`) type-checks, tests and builds every pull request. It deploys `main` to GitHub Pages; for that to work, set the Pages source to **GitHub Actions** in the repo settings. A second workflow, `refresh-popularity.yml`, rebuilds the US city data and keeps the pageview data current (see above).
@@ -74,11 +85,12 @@ GitHub Actions (`.github/workflows/deploy.yml`) type-checks, tests and builds ev
 - `src/data/`: the knowledge base.
   - `countries.ts`, `regions.ts`, `features.ts`: hand-maintained places and facts.
   - `us.ts`: hand-checked US states and national parks.
-  - `world.gen.ts`, `popularity.gen.ts`, `us.gen.ts`, `capitals.gen.ts`: generated from open data; don't edit by hand.
+  - `world.gen.ts`, `popularity.gen.ts`, `wordfreq.gen.ts`, `us.gen.ts`, `capitals.gen.ts`: generated from open data; don't edit by hand.
+  - `familiarity.ts`: hand-kept notes for the familiarity measure: names whose word counts are skipped, other spellings, and the hand-review nudges.
   - `prompts.ts`: builds the World game's prompts (about 180 prompts in 12 categories).
   - `usprompts.ts`: the USA game's places and prompts.
   - `capprompts.ts`: the capitals game's prompts.
-  - `rarity.ts`: turns pageviews into predicted shares and tiers.
+  - `rarity.ts`: blends pageviews and word frequency into familiarity, and turns that into predicted shares and tiers.
   - `index.ts`: answers for a prompt, and `judge()` for answer matching.
 - `scripts/`: the data builders.
 - `src/rules.ts`: daily seeding, scoring, ranks and the share line. It doesn't touch the page.

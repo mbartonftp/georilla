@@ -12,9 +12,11 @@
     "data:world": "tsx scripts/build-world.ts",
     "data:popularity": "tsx scripts/fetch-popularity.ts",
     "data:us": "tsx scripts/build-us.ts",
-    "data:capitals": "tsx scripts/build-capitals.ts"
+    "data:capitals": "tsx scripts/build-capitals.ts",
+    "data:wordfreq": "tsx scripts/fetch-wordfreq.ts"
   },
   "devDependencies": {
+    "@msgpack/msgpack": "^3.1.3",
     "@types/d3-ease": "^3.0.2",
     "@types/d3-geo": "^3.1.0",
     "@types/geojson": "^7946.0.14",

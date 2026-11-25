@@ -222,6 +222,7 @@ body.panic::after { opacity: 1; animation: panic 1s ease-in-out infinite; }
 @keyframes panic { 50% { opacity: .45; } }
 
 footer { text-align: center; font-size: .78rem; color: #5f7f70; }
+footer a { color: inherit; }
 
 @media (min-width: 700px) {
   :root { --globe: 380px; }

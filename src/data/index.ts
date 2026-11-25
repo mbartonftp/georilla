@@ -2,7 +2,9 @@
 import { COUNTRIES, COUNTRY } from "./countries";
 import { VIEWS } from "./popularity.gen";
 import { wordplayNames } from "./prompts";
-import { CITY_STATE_FACTOR, rate, salience } from "./rarity";
+import { NUDGE } from "./familiarity";
+import { CITY_STATE_FACTOR, INITIALS_FACTOR, blend, fitScale, rate, salience, wordsAsViews } from "./rarity";
+import { ALIAS_ZIPF, WORD_ZIPF } from "./wordfreq.gen";
 import { REGION_SETS } from "./regions";
 import { CAPITAL_LL } from "./capitals.gen";
 import type { Answer, Country, Judgement, LonLat, Prompt } from "./types";
@@ -32,6 +34,17 @@ const CAPITAL_OF = new Map(COUNTRIES.flatMap(c => c.caps.map(k => [k.name, { cou
 /** Fallback when a title has no pageview data yet: ranks it with the least-read places. */
 const MISSING_VIEWS = 1000;
 const views = (wiki: string) => VIEWS[wiki] ?? MISSING_VIEWS;
+const SCALE = fitScale(Object.entries(WORD_ZIPF).filter(([w]) => w in VIEWS).map(([w, z]) => [Math.log10(VIEWS[w]), z]));
+/** Places whose word frequencies are compared with each other: countries, capitals, and each country's states. */
+const PEERS: string[][] = [COUNTRIES.map(c => c.wiki), COUNTRIES.flatMap(c => c.caps.map(k => k.wiki)), ...Object.values(REGION_SETS).map(l => l.map(r => r.wiki))];
+const GAP = new Map<string, number>();
+for (const group of PEERS) {
+  const scored = group.filter(w => w in WORD_ZIPF), gaps = scored.map(w => wordsAsViews(WORD_ZIPF[w], SCALE) - Math.log10(views(w)));
+  const gap = gaps.length ? gaps.reduce((s, x) => s + x, 0) / gaps.length : 0;
+  for (const w of group) GAP.set(w, gap);
+}
+/** How familiar a place is, in pageviews a year: pageviews blended with word frequency where there is one. */
+export const familiar = (wiki: string): number => blend(views(wiki), WORD_ZIPF[wiki], SCALE, GAP.get(wiki), NUDGE[wiki]?.by);
 
 type Draft = Omit<Answer, "tier" | "share" | "nkeys"> & { weight: number; qual?: string };
 
@@ -39,24 +52,28 @@ function draft(p: Prompt, name: string): Draft {
   if (p.kind === "capital") {
     const hit = CAPITAL_OF.get(name);
     if (!hit) throw new Error(`${p.id}: unknown capital ${name}`);
-    const v = views(hit.cap.wiki), weight = salience(v) * (hit.cap.wiki === hit.country.wiki ? CITY_STATE_FACTOR : 1);
+    const v = views(hit.cap.wiki), weight = salience(familiar(hit.cap.wiki)) * (hit.cap.wiki === hit.country.wiki ? CITY_STATE_FACTOR : 1);
     return { label: name, sub: hit.country.name, country: hit.country.name, ll: CAPITAL_LL[name], views: v, weight, keys: [name, ...hit.cap.aliases] };
   }
   if (p.kind === "place") {
     const pl = US_PLACES.get(name);
     if (!pl) throw new Error(`${p.id}: unknown place ${name}`);
     const v = views(pl.wiki);
-    return { label: pl.name, country: pl.area, ll: pl.ll, qual: pl.qual, views: v, weight: salience(v, pl.pop), keys: [...pl.keys] };
+    return { label: pl.name, country: pl.area, ll: pl.ll, qual: pl.qual, views: v, weight: salience(familiar(pl.wiki), pl.pop), keys: [...pl.keys] };
   }
   if (p.kind === "region") {
     const r = REGION_SETS[p.parent!]?.find(x => x.name === name);
     if (!r) throw new Error(`${p.id}: unknown region ${name}`);
-    return { label: name, country: p.parent, views: views(r.wiki), weight: salience(views(r.wiki)), keys: [name, ...r.aliases] };
+    return { label: name, country: p.parent, views: views(r.wiki), weight: salience(familiar(r.wiki)), keys: [name, ...r.aliases] };
   }
   const c = COUNTRY.get(name);
   if (!c) throw new Error(`${p.id}: unknown country ${name}`);
   const keys = p.spell ? wordplayNames(c).filter(p.spell) : countryKeys(c);
-  return { label: keys[0], country: c.name, views: views(c.wiki), weight: salience(views(c.wiki), WORLD[c.name].pop), keys };
+  // a wordplay answer that only fits under another name ("Burma" for B) is as familiar as that name, not the country;
+  // initials (PRC, DPRK) are written plenty but hardly anyone answers with them
+  const aliasFamiliar = (k: string) => 10 ** wordsAsViews(ALIAS_ZIPF[k] ?? 1, SCALE) * (/^[A-Z]{2,}$/.test(k) ? INITIALS_FACTOR : 1);
+  const weight = salience(keys[0] === c.name ? familiar(c.wiki) : keys.reduce((s, k) => s + aliasFamiliar(k), 0), WORLD[c.name].pop);
+  return { label: keys[0], country: c.name, views: views(c.wiki), weight, keys };
 }
 
 const cache = new Map<string, Answer[]>();
