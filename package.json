@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "data:world": "tsx scripts/build-world.ts",
-    "data:popularity": "tsx scripts/fetch-popularity.ts"
+    "data:popularity": "tsx scripts/fetch-popularity.ts",
+    "data:us": "tsx scripts/build-us.ts",
+    "data:capitals": "tsx scripts/build-capitals.ts"
   },
   "devDependencies": {
     "@types/d3-ease": "^3.0.2",

@@ -1,5 +1,8 @@
 /* Shared types for Georilla's knowledge base. */
 
+/** [longitude, latitude] in degrees */
+export type LonLat = [number, number];
+
 export type ContinentCode = "AF" | "AS" | "EU" | "NA" | "SA" | "OC";
 
 export interface Capital {
@@ -46,7 +49,29 @@ export interface WorldFacts {
 
 export type Category =
   | "Continents" | "Regions" | "Capitals" | "Neighbours" | "Wordplay" | "Coasts & seas" | "Lines on the map"
-  | "Rivers & ranges" | "Land & islands" | "Language & money" | "Size & people" | "States & provinces";
+  | "Rivers & ranges" | "Land & islands" | "Language & money" | "Size & people" | "States & provinces"
+  // the capitals game
+  | "Capital trivia"
+  // the USA game
+  | "The 50 states" | "Coasts & rivers" | "Regions & trails" | "History" | "Cities" | "State capitals" | "National parks";
+
+/** A place in one of the side games: a US state, city or national park. */
+export interface Place {
+  /** unique id, like "city:Portland, OR" */
+  id: string;
+  name: string;
+  wiki: string;
+  /** every name a player might type, the display name first */
+  keys: string[];
+  /** the map area it sits in (a US state), for fills */
+  area: string;
+  /** where to put the pin, if not the middle of the area */
+  ll?: LonLat;
+  /** people, for cities: big cities come to mind first */
+  pop?: number;
+  /** tells apart two places with the same name, like "Oregon" for Portland */
+  qual?: string;
+}
 
 export interface Prompt {
   /** unique, stable id */
@@ -54,8 +79,8 @@ export interface Prompt {
   q: string;
   note?: string;
   cat: Category;
-  /** what the answers are: countries, capitals of countries, or regions of one country */
-  kind: "country" | "capital" | "region";
+  /** what the answers are: countries, capitals of countries, regions of one country, or places by id */
+  kind: "country" | "capital" | "region" | "place";
   /** answer names: countries (for country and capital prompts) or region names */
   answers: string[];
   /** for region prompts: which country, so the globe can point there */
@@ -68,8 +93,10 @@ export interface Prompt {
 
 export interface Answer {
   label: string;
-  /** country this answer sits in, for the globe */
+  /** country (or, in the USA game, state) this answer sits in, for the map */
   country?: string;
+  /** where to put the pin, if not the middle of that area */
+  ll?: LonLat;
   /** for capital answers: the country it is the capital of */
   sub?: string;
   /** yearly English Wikipedia pageviews, the basis of rarity */

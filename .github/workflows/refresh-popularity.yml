@@ -1,6 +1,7 @@
 name: Refresh popularity
 
-# Looks up Wikipedia pageviews for every place in the game (the basis of rarity) and commits the result.
+# Rebuilds the US city data from the Census Bureau, looks up Wikipedia pageviews for every place in the game
+# (the basis of rarity), and commits the result.
 # Runs by hand, once a year, and on branches that change which places the game knows.
 on:
   workflow_dispatch:
@@ -12,6 +13,8 @@ on:
       - scripts/fetch-popularity.ts
       - src/data/countries.ts
       - src/data/regions.ts
+      - src/data/us.ts
+      - scripts/build-us.ts
       - .github/workflows/refresh-popularity.yml
 
 permissions:
@@ -30,11 +33,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run data:us
       - run: npm run data:popularity
       - name: Commit if changed
         run: |
           if git diff --quiet; then echo "No change"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898242+github-actions[bot]@users.noreply.github.com"
-          git commit -am "Refresh Wikipedia pageview data"
+          git add -A src/data
+          git commit -m "Refresh Census and Wikipedia pageview data"
           git push

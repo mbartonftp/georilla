@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Georilla</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="A daily geography game. Seven prompts, thirty seconds each, and the more obscure your right answer, the more it scores.">
+<meta name="description" content="Three daily geography games: the world, the USA and capital cities. Seven prompts, thirty seconds each, and the more obscure your right answer, the more it scores.">
 <meta name="theme-color" content="#0b2a20">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='34' r='26' fill='%232b2f33'/%3E%3Cellipse cx='32' cy='42' rx='16' ry='13' fill='%238a7464'/%3E%3Ccircle cx='25' cy='30' r='8' fill='%238a7464'/%3E%3Ccircle cx='39' cy='30' r='8' fill='%238a7464'/%3E%3Ccircle cx='25' cy='30' r='2.6' fill='%23111'/%3E%3Ccircle cx='39' cy='30' r='2.6' fill='%23111'/%3E%3Cpath d='M10 20 Q32 -4 54 20 Z' fill='%23d8b56a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,7 +32,8 @@
 
   <div class="stage">
     <div class="globe-wrap" id="globewrap">
-      <canvas id="globe" aria-label="Spinning globe" role="img"></canvas>
+      <canvas id="globe" class="map" aria-label="Spinning globe" role="img"></canvas>
+      <canvas id="usmap" class="map" aria-label="Map of the United States" role="img" hidden></canvas>
       <svg class="ring off" id="ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="48"/><circle class="glow" id="ringglow" cx="50" cy="50" r="48" pathLength="100" stroke-dasharray="100 100"/><circle class="prog" id="ringprog" cx="50" cy="50" r="48" pathLength="100" stroke-dasharray="100 100"/></svg>
       <div class="secs" id="secs" hidden>30</div>
       <div class="pinlabel" id="pinlabel" hidden></div>
@@ -70,13 +71,19 @@
     </div>
   </div>
 
+  <nav class="modes" id="modes" aria-label="Today's games">
+    <button class="mode" data-mode="world" aria-pressed="true"><span class="me" aria-hidden="true">🌍</span><span class="mn">World</span><span class="ms"></span></button>
+    <button class="mode" data-mode="usa" aria-pressed="false"><span class="me" aria-hidden="true">🇺🇸</span><span class="mn">USA</span><span class="ms"></span></button>
+    <button class="mode" data-mode="capitals" aria-pressed="false"><span class="me" aria-hidden="true">🏛️</span><span class="mn">Capitals</span><span class="ms"></span></button>
+  </nav>
+
   <div class="trail" id="trail" aria-hidden="true"></div>
 
   <!-- intro -->
   <section class="panel intro" id="intro" hidden>
     <div class="eyebrow" id="introdate">Today's expedition</div>
-    <h1>Name the places nobody else will.</h1>
-    <p class="muted">Seven prompts, <b style="color:var(--mist)">30 seconds</b> each, as many guesses as you like. Every prompt has lots of right answers, and the more obscure yours is, the more it scores.</p>
+    <h1 id="introh1">Name the places nobody else will.</h1>
+    <p class="muted" id="introblurb">Seven prompts, <b>30 seconds</b> each, as many guesses as you like. Every prompt has lots of right answers, and the more obscure yours is, the more it scores.</p>
     <div class="ladder-h" aria-label="Score tiers">
       <div class="lrung c0"><b>10</b><span>Common</span></div>
       <div class="lrung c1"><b>25</b><span>Familiar</span></div>
@@ -132,6 +139,7 @@
       <div><b id="sBest">0</b><span>Best</span></div>
     </div>
     <div class="btnrow"><button class="btn" id="share">Share result</button><button class="btn ghost sm" id="again">Practice round</button></div>
+    <div class="moretoday" id="moretoday" hidden></div>
     <p class="toast" id="toast" role="status"></p>
     <textarea id="sharetext" readonly rows="4" hidden aria-label="Result to copy"></textarea>
     <p class="next" id="next"></p>
@@ -139,7 +147,7 @@
     <ul class="recap" id="recap"></ul>
   </section>
 
-  <footer>Map data: Natural Earth via world-atlas. Rarity is our own estimate of how well known each answer is.</footer>
+  <footer>Map data: Natural Earth via world-atlas, and the US Census Bureau via us-atlas. Rarity is our own estimate of how well known each answer is.</footer>
 </div>
 
 <div class="countdown" id="countdown" hidden><span id="cdn">3</span></div>
