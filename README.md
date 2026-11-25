@@ -18,6 +18,7 @@ Play it at https://mbartonftp.github.io/georilla/
 - **Practice.** A practice round uses a random set from the current game and doesn't count towards stats.
 - **Maps.** The World and Capitals games use the globe. The USA game uses a flat map of the states in the same round frame: it zooms to each answer's state, flies out to Alaska, Hawaii and the territories, and can be dragged around. Cities, national parks and capitals get a dot where they really are.
 - **Mascot and sound.** Rilla the gorilla reacts as you play. Sound effects are synthesised in the browser and can be muted.
+- **Fits the screen.** The game is always exactly as tall as the visible screen, so the page never scrolls; the globe grows or shrinks to fill whatever room is left, and a long panel (like the results) scrolls inside itself. On a phone, opening the keyboard shrinks the layout to the space above it: the header and game tabs step aside and the globe shrinks (down to just the clock on small phones), so the prompt, answer box, Go button and suggestions stay in view. Suggestions are a swipeable row of chips under the answer box, so they never cover the prompt.
 
 ## How rarity works
 
@@ -85,6 +86,7 @@ GitHub Actions (`.github/workflows/deploy.yml`) type-checks, tests and builds ev
 - `src/modes.ts`: the three games: their prompt pools, storage keys, intro text and share names.
 - `src/mapview.ts`: what the game needs from a map. `src/globe.ts` is the canvas globe (d3-geo), with fly-to, fills, dots, pins and drag to spin; `src/usmap.ts` is the flat US map, with zoom-to-state and drag to pan.
 - `src/game.ts`: game flow, timer, reveal and results.
+- `src/viewport.ts`: sizes the page to the visible screen (the visual viewport) and spots the on-screen keyboard; the layout rules are under "App shell" and "keyboard open" in `src/style.css`.
 - `src/sound.ts`, `src/fx.ts`, `src/store.ts`: sound effects, confetti, and safe localStorage.
 - `src/style.css`: styles.
 - `public/data/`: Natural Earth country shapes from world-atlas, in 110m and 50m resolutions, and US state shapes from us-atlas (Census Bureau, 1:10m).

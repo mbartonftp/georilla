@@ -478,11 +478,11 @@ export function startGame(): void {
      the late synthetic click so it can't land on whatever replaces the list, and keep click as a fallback
      for assistive tech. */
   const rowOf = (e: Event): HTMLElement | null => (e.target as HTMLElement).closest<HTMLElement>("#suggest li");
-  let downRow: HTMLElement | null = null, downY = 0, pickedAt = 0;
-  suggestEl.addEventListener("pointerdown", e => { downRow = rowOf(e); downY = e.clientY; if (downRow) e.preventDefault(); });
+  let downRow: HTMLElement | null = null, downX = 0, downY = 0, pickedAt = 0;
+  suggestEl.addEventListener("pointerdown", e => { downRow = rowOf(e); downX = e.clientX; downY = e.clientY; if (downRow) e.preventDefault(); });
   suggestEl.addEventListener("pointerup", e => {
     const row = rowOf(e), start = downRow; downRow = null;
-    if (!row || row !== start || Math.abs(e.clientY - downY) > 12) return;
+    if (!row || row !== start || Math.abs(e.clientY - downY) > 12 || Math.abs(e.clientX - downX) > 12) return;
     e.preventDefault(); pickedAt = performance.now(); choose(row.dataset.n);
   });
   suggestEl.addEventListener("pointercancel", () => { downRow = null; });

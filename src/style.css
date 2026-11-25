@@ -13,20 +13,18 @@
   --t0: #c3cdc6; --t1: #5ab4ff; --t2: #4fe0b0; --t3: #b58cff; --t4: #ffd23f;
   --display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
   --body: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --globe: min(72vw, 340px, 44vh);
+  --globe-max: 340px;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 body {
   margin: 0; background: var(--jungle-1); color: var(--mist); font-family: var(--body); font-size: 16px; line-height: 1.45;
   background-image:
     radial-gradient(120% 60% at 50% 0%, #15503c 0%, transparent 60%),
     radial-gradient(90% 50% at 50% 100%, var(--jungle-0) 0%, transparent 70%);
   background-attachment: fixed;
-  overflow-x: hidden;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 0 40px;
+  margin: 0;
   -webkit-tap-highlight-color: transparent;
 }
 [hidden] { display: none !important; }
@@ -42,7 +40,18 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 @keyframes sway { 50% { transform: rotate(3deg); } }
 @keyframes swayR { 0%,100% { transform: scaleX(-1) rotate(0); } 50% { transform: scaleX(-1) rotate(3deg); } }
 
-.app { position: relative; z-index: 1; max-width: 540px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; padding-top: 12px; }
+/* App shell: a fixed column exactly as tall as the visible screen (--app-h tracks the visual viewport, so it
+   shrinks when the iPhone keyboard opens; see src/viewport.ts). The page never scrolls: the globe takes
+   whatever height is left over, and a panel too tall for the screen scrolls inside itself. */
+.app { position: fixed; z-index: 1; left: 0; right: 0; top: var(--app-top, 0px); height: var(--app-h, 100dvh); max-width: 572px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: max(10px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.app > * { flex: none; }
+.app > .stage { flex: 1 1 0; min-height: min(150px, 30%); }
+.app > .panel { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.app > #play { flex: none; overflow: visible; } /* the round must always show in full */
+/* the trail only matters mid-game */
+.app:has(> #intro:not([hidden])) > .trail, .app:has(> #result:not([hidden])) > .trail { display: none; }
 
 /* top bar */
 .top { display: flex; align-items: center; gap: 10px; }
@@ -59,8 +68,10 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .iconbtn[aria-pressed="false"] .on, .iconbtn[aria-pressed="true"] .off { display: none; }
 
 /* globe stage */
-.stage { position: relative; display: grid; place-items: center; padding-block: 6px 0; }
-.globe-wrap { position: relative; width: var(--globe); aspect-ratio: 1; max-width: 100%; }
+/* the globe is the largest square that fits the stage, leaving room for the ring and the clock above it */
+.stage { position: relative; display: grid; place-items: center; container-type: size; }
+.stage > * { --globe: max(40px, min(var(--globe-max), calc(100cqw - 40px), calc(100cqh - 44px))); }
+.globe-wrap { position: relative; width: var(--globe); aspect-ratio: 1; margin-top: 8px; }
 .map { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
 .map[hidden] { display: none; }
 .map:active { cursor: grabbing; }
@@ -82,7 +93,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .pinlabel.bad::after { border-top-color: var(--bad); }
 
 /* mascot */
-.mascot { position: absolute; right: max(-4px, calc(50% - var(--globe) / 2 - 34px)); bottom: -8px; width: 92px; z-index: 3; }
+.mascot { position: absolute; right: max(-4px, calc(50% - var(--globe) / 2 - 34px)); bottom: -8px; width: clamp(52px, calc(var(--globe) * .3), 92px); z-index: 3; }
 .mascot svg { width: 100%; display: block; filter: drop-shadow(0 6px 8px rgba(0,0,0,.4)); transform-origin: 50% 90%; animation: idle 3.2s ease-in-out infinite; }
 @keyframes idle { 50% { transform: translateY(-3px); } }
 .mascot.hop svg { animation: hop .6s cubic-bezier(.3,1.6,.5,1); }
@@ -145,7 +156,7 @@ p { margin: 0; }
 .chip { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--banana); background: rgba(255,210,63,.1); border: 1.5px solid rgba(255,210,63,.35); padding: 3px 10px; border-radius: 999px; }
 .q { font-size: clamp(1.7rem, 6.5vw, 2.3rem); }
 .qnote { color: var(--moss); font-size: .92rem; margin-top: -6px; }
-.answer { position: relative; display: flex; gap: 8px; }
+.answer { position: relative; display: flex; flex-wrap: wrap; gap: 8px; }
 .answer input { flex: 1; min-width: 0; font: inherit; font-size: 1.15rem; padding: 13px 16px; border-radius: 14px; border: 2px solid var(--jungle-3); background: var(--jungle-0); color: var(--mist); transition: border-color .2s; }
 .answer input::placeholder { color: #5f7f70; }
 .answer input:focus { outline: none; border-color: var(--banana); }
@@ -154,9 +165,13 @@ p { margin: 0; }
 @keyframes shake { 15%,55% { transform: translateX(-9px); } 35%,75% { transform: translateX(9px); } 90% { transform: translateX(-3px); } }
 .answer.wobble { animation: wobble .4s; }
 @keyframes wobble { 30% { transform: rotate(-1.2deg); } 60% { transform: rotate(1.2deg); } }
-.suggest { position: absolute; left: 0; right: 0; top: calc(100% + 6px); margin: 0; padding: 6px; list-style: none; background: var(--jungle-0); border: 1.5px solid var(--jungle-3); border-radius: 14px; z-index: 5; box-shadow: 0 14px 30px rgba(0,0,0,.45); }
-.suggest li { padding: 9px 12px; border-radius: 9px; cursor: pointer; }
-.suggest li[aria-selected="true"], .suggest li:hover { background: var(--jungle-2); }
+/* suggestions are one swipeable row under the answer box, nearest the keyboard (like the iPhone's predictive
+   bar), so they never cover the prompt and always fit on screen */
+.suggest { flex: 0 0 100%; order: 1; display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+.suggest::-webkit-scrollbar { display: none; }
+.suggest li { flex: none; white-space: nowrap; padding: 8px 13px; border-radius: 999px; cursor: pointer; background: var(--jungle-0); border: 1.5px solid var(--jungle-3); }
+.suggest li[aria-selected="true"], .suggest li:hover { background: var(--jungle-2); border-color: var(--banana); }
 .suggest mark { background: none; color: var(--banana); font-weight: 700; }
 .msg { min-height: 1.4em; font-size: .95rem; color: var(--bad); font-weight: 500; }
 .linkbtn { background: none; border: 0; color: var(--moss); text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; font-size: .9rem; }
@@ -224,7 +239,7 @@ body.panic::after { opacity: 1; animation: panic 1s ease-in-out infinite; }
 footer { text-align: center; font-size: .78rem; color: #5f7f70; }
 
 @media (min-width: 700px) {
-  :root { --globe: 380px; }
+  :root { --globe-max: 380px; }
   .logo { font-size: 2.3rem; }
 }
 @media (max-width: 380px) {
@@ -253,3 +268,35 @@ footer { text-align: center; font-size: .78rem; color: #5f7f70; }
 .mode:focus-visible { outline: 2px solid var(--banana); outline-offset: 2px; }
 .moretoday { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .9rem; color: var(--moss); }
 .moretoday[hidden] { display: none; }
+
+/* keyboard open (phones): drop everything but the round so the prompt, answer box, Go and suggestions all
+   sit above the keyboard. */
+body.kbd .app { gap: 8px; padding-top: 6px; padding-bottom: 8px; justify-content: flex-end; overflow: hidden; } /* if it's still too tall, lose the top, never the answer box */
+body.kbd .top, body.kbd .modes, body.kbd .canopy { display: none; }
+body.kbd .app > .stage { min-height: 44px; }
+body.kbd .stage > * { --globe: max(0px, min(var(--globe-max), calc(100cqw - 40px), calc(100cqh - 40px))); }
+body.kbd .globe-wrap { margin-top: 4px; }
+body.kbd .trail .node { width: 22px; height: 22px; font-size: .72rem; }
+body.kbd #play { padding: 12px 14px; gap: 9px; }
+body.kbd .q { font-size: clamp(1.3rem, 5.4vw, 1.8rem); }
+body.kbd .qnote { margin-top: -4px; font-size: .85rem; }
+body.kbd .answer input { padding-block: 10px; }
+body.kbd .bubble { display: none; }
+/* short screens (phones in Safari): tighter intro and game tabs so the start button fits without scrolling */
+@media (max-height: 760px) {
+  .app { gap: 10px; }
+  .app > .stage { min-height: min(110px, 24%); }
+  .panel { padding: 16px; gap: 11px; }
+  .intro h1 { font-size: 1.75rem; }
+  .intro .muted { font-size: .92rem; line-height: 1.4; }
+  .lrung { padding: 6px 2px; }
+  .mode { display: grid; grid-template-columns: auto auto; justify-content: center; column-gap: 5px; padding: 6px 6px 5px; }
+  .mode .me { font-size: 1rem; }
+  .mode .ms { grid-column: 1 / -1; text-align: center; }
+  .logo { font-size: 1.75rem; }
+  .iconbtn { width: 34px; height: 34px; }
+}
+@media (max-height: 600px) {
+  .app > .stage { min-height: min(90px, 20%); }
+  .intro .ladder-h { display: none; }
+}
