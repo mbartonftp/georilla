@@ -79,7 +79,7 @@ describe("US cities and parks", () => {
 });
 
 describe("capitals", () => {
-  it("knows where every capital is, inside or near its country", () => {
+  it("knows where every capital is", () => {
     for (const c of COUNTRIES) for (const k of c.caps) expect(CAPITAL_LL[k.name], k.name).toBeDefined();
   });
 });
