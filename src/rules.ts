@@ -108,3 +108,11 @@ export function shareText(results: (Result | null)[], label: string, site: strin
   const tot = totalOf(results);
   return `Georilla ${game ? game + " " : ""}${label} 🦍 ${tot}/${MAX}\n${rankFor(tot)}\n` + results.map(r => (r ? EMOJI[r.tier] : MISS)).join("") + `\n${site}`;
 }
+
+export interface DayGame { name: string; emoji: string; results: (Result | null)[] }
+/** One share message for every game finished today: a line per game, then the combined score. */
+export function comboShareText(games: DayGame[], label: string, site: string): string {
+  const tot = games.reduce((s, g) => s + totalOf(g.results), 0);
+  const lines = games.map(g => `${g.emoji} ${g.name} ${totalOf(g.results)} ` + g.results.map(r => (r ? EMOJI[r.tier] : MISS)).join(""));
+  return `Georilla ${label} 🦍 ${tot}/${MAX * games.length}\n` + lines.join("\n") + `\n${site}`;
+}
