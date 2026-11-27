@@ -159,3 +159,43 @@ word("two-words", "Name a state with a two-word name", n => n.includes(" "));
 word("end-a", "Name a state ending in “a”", n => n.endsWith("a"));
 word("double", "Name a state with a double letter in its name", n => /(\w)\1/i.test(n.replace(/ /g, "")), "Like the “ss” in Missouri.");
 word("long", "Name a state with 12 or more letters in its name", n => n.replace(/ /g, "").length >= 12, "Spaces don't count.");
+
+/* ---------- city and park prompts in the state-heavy categories ----------
+   Most USA prompts take states, and there are only 50, so two of them on one day often share an answer.
+   These take cities and parks instead, so History, Coasts & rivers, Regions & trails and Wordplay have prompts that
+   fit alongside the state ones. Lists cut at 100,000 people are complete, because the city data has every city that big. */
+const city = (csv: string) => csv.split(";").map(x => {
+  const id = CITY_OF.get(x.trim());
+  if (!id) throw new Error(`no city ${x}`);
+  return id;
+});
+const regionOf = (abbr: string) => STATE_BY_ABBR.get(abbr)?.region;
+const NEW_ENGLAND = new Set(["Maine", "New Hampshire", "Vermont", "Massachusetts", "Rhode Island", "Connecticut"]);
+
+// History
+add("capitals-thirteen", "History", "Name the capital of one of the original Thirteen Colonies",
+  STATES.filter(s => s.admitted < 1791).map(capital));
+add("capitals-confederacy", "History", "Name the capital of a state that joined the Confederacy",
+  named("South Carolina, Mississippi, Florida, Alabama, Georgia, Louisiana, Texas, Virginia, Arkansas, North Carolina, Tennessee").map(id => capital(STATE.get(id.slice(6))!)));
+add("capitals-last-ten", "History", "Name the capital of one of the last ten states to join the Union", byYear.slice(0, 10).map(capital));
+
+// Coasts & rivers
+add("cities-mississippi", "Coasts & rivers", "Name a city on the Mississippi River with more than 100,000 people",
+  city("Minneapolis, MN; St. Paul, MN; Davenport, IA; St. Louis, MO; Memphis, TN; Baton Rouge, LA; New Orleans, LA"));
+add("capitals-big-rivers", "Coasts & rivers", "Name a state capital on the Mississippi or Missouri River", city("St. Paul, MN; Baton Rouge, LA; Bismarck, ND; Pierre, SD; Jefferson City, MO"));
+
+// Regions & trails
+add("parks-midwest", "Regions & trails", "Name a national park in the Midwest", parks(p => p.states.some(a => regionOf(a) === "Midwest")));
+add("parks-south", "Regions & trails", "Name a national park in the South", parks(p => p.states.some(a => regionOf(a) === "South")));
+add("cities-new-england", "Regions & trails", "Name a New England city with more than 100,000 people", cityIds(big(100_000).filter(c => NEW_ENGLAND.has(c.state))));
+for (const [r, id] of CENSUS) {
+  const list = big(500_000).filter(c => STATE.get(c.state)?.region === r);
+  if (list.length >= 5) add("cities-500k-" + id, "Regions & trails", `Name a city in the ${r} with more than 500,000 people`, cityIds(list));
+}
+
+// Wordplay
+add("cities-san", "Wordplay", "Name a city starting with “San” or “Santa” that has more than 100,000 people",
+  cityIds(cities.filter(c => /^Sant?a? /.test(c.name) && (c.pop >= 100_000 || STATES.some(s => s.capital === c.name && s.name === c.state)))));
+add("cities-city", "Wordplay", "Name a city with “City” in its name that has more than 100,000 people",
+  cityIds(cities.filter(c => / City$/.test(c.name) && (c.pop >= 100_000 || STATES.some(s => s.capital === c.name && s.name === c.state)))));
+add("cities-ville", "Wordplay", "Name a city ending in “ville” that has more than 100,000 people", cityIds(big(100_000).filter(c => c.name.endsWith("ville"))));
