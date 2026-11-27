@@ -155,7 +155,6 @@ p { margin: 0; }
 .qtop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .chip { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--banana); background: rgba(255,210,63,.1); border: 1.5px solid rgba(255,210,63,.35); padding: 3px 10px; border-radius: 999px; }
 .q { font-size: clamp(1.7rem, 6.5vw, 2.3rem); }
-.qnote { color: var(--moss); font-size: .92rem; margin-top: -6px; }
 .answer { position: relative; display: flex; flex-wrap: wrap; gap: 8px; }
 .answer input { flex: 1; min-width: 0; font: inherit; font-size: 1.15rem; padding: 13px 16px; border-radius: 14px; border: 2px solid var(--jungle-3); background: var(--jungle-0); color: var(--mist); transition: border-color .2s; }
 .answer input::placeholder { color: #5f7f70; }
@@ -279,7 +278,6 @@ body.kbd .globe-wrap { margin-top: 4px; }
 body.kbd .trail .node { width: 22px; height: 22px; font-size: .72rem; }
 body.kbd #play { padding: 12px 14px; gap: 9px; }
 body.kbd .q { font-size: clamp(1.3rem, 5.4vw, 1.8rem); }
-body.kbd .qnote { margin-top: -4px; font-size: .85rem; }
 body.kbd .answer input { padding-block: 10px; }
 body.kbd .bubble { display: none; }
 /* short screens (phones in Safari): tighter intro and game tabs so the start button fits without scrolling */

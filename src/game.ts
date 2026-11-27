@@ -3,7 +3,7 @@ import { easeCubicOut } from "d3-ease";
 import { answersFor, category, judge, norm, type Answer, type NameEntry, type Prompt } from "./data";
 import { Globe } from "./globe";
 import type { Dot, MapView } from "./mapview";
-import { MODE, MODES, modeFromHash, seedFor, type Mode, type ModeId } from "./modes";
+import { MODE, MODES, dailySets, modeFromHash, type Mode, type ModeId } from "./modes";
 import { UsMap } from "./usmap";
 import { Confetti } from "./fx";
 import { Sound, buzz } from "./sound";
@@ -57,7 +57,7 @@ export function startGame(): void {
   const freshState = (): State => ({ phase: "intro", i: 0, startedAt: null, results: [] });
   const dayOf = (m: Mode) => store.get<State | null>(m.dayKey + key, null);
   const statsOf = (m: Mode) => store.get<Stats>(m.statsKey, { played: 0, sum: 0, best: 0, streak: 0, lastDay: null });
-  const loadDaily = () => { practice = false; SET = pickSet(seedFor(mode, key), mode.pool); ITEMS = SET.map(answersFor); S = dayOf(mode) || freshState(); };
+  const loadDaily = () => { practice = false; SET = dailySets(key)[mode.id]; ITEMS = SET.map(answersFor); S = dayOf(mode) || freshState(); };
   const loadPractice = () => { practice = true; SET = pickSet(Math.floor(Math.random() * 1e9), mode.pool); ITEMS = SET.map(answersFor); S = freshState(); };
   const save = () => { if (!practice) store.set(mode.dayKey + key, S); };
   const total = () => totalOf(S.results);
@@ -191,7 +191,6 @@ export function startGame(): void {
     $("chip").textContent = category(p);
     $("qno").textContent = `${S.i + 1} of ${ROUNDS}`;
     $("qtext").textContent = p.q;
-    $("qnote").textContent = p.note || ""; $("qnote").hidden = !p.note;
     $("msg").textContent = ""; guess.value = ""; closeSuggest();
     show("play"); drawTrail(); updateHeader();
     globe.clear(); globe.setSpin(true);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MAX, ROUNDS, dayKey, dayNumber, pickSet, rankFor, shareText, totalOf } from "../src/rules";
+import { P } from "../src/data";
+import { MAX, ROUNDS, answerKeys, dayKey, dayNumber, pickSet, rankFor, shareText, totalOf } from "../src/rules";
 
 describe("daily set", () => {
   it("is the same for the same day and different on another day", () => {
@@ -14,11 +15,18 @@ describe("daily set", () => {
       expect(new Set(set.map(p => p.cat)).size, set.map(p => p.id).join(",")).toBe(ROUNDS);
     }
   });
-  it("gives every category a fair turn over a year", () => {
+  it("gives every category a turn over a year", () => {
+    // categories of broad prompts (Size & people) come up less, since they share answers with more of the others
     const seen = new Map<string, number>();
     for (let seed = 20270101; seed < 20270101 + 365; seed++) for (const p of pickSet(seed)) seen.set(p.cat, (seen.get(p.cat) || 0) + 1);
-    const counts = [...seen.values()];
-    expect(Math.min(...counts) / Math.max(...counts)).toBeGreaterThan(0.6);
+    expect(seen.size).toBe(new Set(P.map(p => p.cat)).size);
+    expect(Math.min(...seen.values())).toBeGreaterThan(365 * 0.15);
+  });
+  it("never lets one answer fit two prompts in a world set", () => {
+    for (let seed = 20270101; seed < 20270101 + 365; seed++) {
+      const set = pickSet(seed), keys = set.flatMap(answerKeys);
+      expect(keys.length - new Set(keys).size, set.map(p => p.id).join(",")).toBe(0);
+    }
   });
   it("numbers days from 24 November 2026", () => {
     expect(dayNumber(new Date(2026, 10, 24, 9))).toBe(1);

@@ -1,4 +1,5 @@
 /* Georilla's three daily games. Each has its own prompts, saved progress, stats and share line. */
+import { answerKeys, pickSet, pickSetV1 } from "./rules";
 import { ALL_NAMES, CAPITAL_NAMES, CAP_P, KNOWN_US, P, PLACE_COUNTRY, PLACE_US, US_NAMES, US_P, type Known, type LonLat, type NameEntry, type Prompt } from "./data";
 
 export type ModeId = "world" | "usa" | "capitals";
@@ -59,3 +60,18 @@ export const modeFromHash = (hash: string): Mode | undefined => MODE.get(hash.re
 
 /** Each game's daily seed. The world game keeps the plain date, so its sets didn't change when the other games arrived. */
 export const seedFor = (m: Mode, dayKey: number): number => (m.salt ? dayKey * 10 + m.salt : dayKey);
+
+/** The first day whose sets avoid overlapping answers (28 Nov 2026). Earlier days keep the sets that were played. */
+export const NO_OVERLAP_FROM = 20261128;
+
+/** Every game's set for a day. The world game picks first; the capitals game then skips the capital versions of the
+    world game's prompts and any capital it already asked for, and the USA game skips any US state the others used,
+    so the same answer never does for two prompts on one day, even across games. */
+export function dailySets(dayKey: number): Record<ModeId, Prompt[]> {
+  const [world, usa, capitals] = [MODE.get("world")!, MODE.get("usa")!, MODE.get("capitals")!];
+  if (dayKey < NO_OVERLAP_FROM) return { world: pickSetV1(seedFor(world, dayKey), world.pool), usa: pickSetV1(seedFor(usa, dayKey), usa.pool), capitals: pickSetV1(seedFor(capitals, dayKey), capitals.pool) };
+  const w = pickSet(seedFor(world, dayKey), world.pool);
+  const c = pickSet(seedFor(capitals, dayKey), capitals.pool, { keys: w.flatMap(answerKeys), ids: w.map(p => "caps-" + p.id) });
+  const u = pickSet(seedFor(usa, dayKey), usa.pool, { keys: [...w, ...c].flatMap(answerKeys) });
+  return { world: w, usa: u, capitals: c };
+}
