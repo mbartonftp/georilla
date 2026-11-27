@@ -11,6 +11,8 @@ Play it at https://mbartonftp.github.io/georilla/
 ## How it plays
 
 - **Three games a day.** Tabs under the map switch between World, USA and Capitals, and show whether you've played each one today. Everyone gets the same seven prompts in each game on a given day, based on the player's local date. All three share the day number; No. 1 is 24 November 2026. The seven prompts always come from seven different categories (Capitals, Neighbours, Coasts & seas, Wordplay and so on). A link ending `#usa` or `#capitals` opens that game.
+- **No answer counts twice.** A day's prompts never share a right answer, so you can't give La Paz for both "a capital of a country with two capitals" and "a capital in South America". This holds across the three games too: the Capitals game never asks the capital version of one of the day's World prompts (World's "a country on the Black Sea" and Capitals' "the capital of a country on the Black Sea"), and the USA game avoids states the World game's US prompts already asked for. The USA game is almost all about the same 50 states, so on roughly one day in fourteen two of its prompts still share a state. Broad prompts (the 30 most populous countries, a US state) come up less often than narrow ones, because they share answers with more of the rest. Days before 28 November 2026 keep the sets that were played.
+- **No hints.** A prompt is just the question. Alternative spellings (St. Paul for Saint Paul, NYC for New York) are accepted without being mentioned on screen.
 - **Clock.** Each prompt shows for a moment before its 30-second clock starts. The ring around the globe drains as time runs out, and the screen edges glow red in the last five seconds.
 - **Guessing.** Wrong answers cost only time. A wrong guess that is a real place flashes red on the globe. A likely typo is corrected for you to confirm, and the type-ahead lists every place name, so it never gives the answer away.
 - **Reveal.** The globe flies to your answer and the rarity ladder climbs to your tier: Common 10, Familiar 25, Uncommon 45, Rare 70, Silverback 100. Every right answer lights up on the globe, coloured by tier.
@@ -82,8 +84,8 @@ GitHub Actions (`.github/workflows/deploy.yml`) type-checks, tests and builds ev
   - `rarity.ts`: turns pageviews into predicted shares and tiers.
   - `index.ts`: answers for a prompt, and `judge()` for answer matching.
 - `scripts/`: the data builders.
-- `src/rules.ts`: daily seeding, scoring, ranks and the share line. It doesn't touch the page.
-- `src/modes.ts`: the three games: their prompt pools, storage keys, intro text and share names.
+- `src/rules.ts`: daily seeding (including the rule that a day's prompts never share an answer), scoring, ranks and the share line. It doesn't touch the page.
+- `src/modes.ts`: the three games: their prompt pools, storage keys, intro text and share names, and `dailySets`, which picks all three games' sets for a day so they don't overlap.
 - `src/mapview.ts`: what the game needs from a map. `src/globe.ts` is the canvas globe (d3-geo), with fly-to, fills, dots, pins and drag to spin; `src/usmap.ts` is the flat US map, with zoom-to-state and drag to pan.
 - `src/game.ts`: game flow, timer, reveal and results.
 - `src/viewport.ts`: sizes the page to the visible screen (the visual viewport) and spots the on-screen keyboard; the layout rules are under "App shell" and "keyboard open" in `src/style.css`.

@@ -9,8 +9,9 @@ import { CAPITAL_LL, CAP_P, COUNTRIES, KNOWN_US, US_P, US_PLACES, VIEWS, answers
 import { VIEW_PROBLEMS } from "../src/data/popularity.gen";
 import { DC, PARKS, STATES, STATE_BY_ABBR } from "../src/data/us";
 import { STATE_POP, US_CITIES } from "../src/data/us.gen";
-import { MODES, seedFor } from "../src/modes";
-import { ROUNDS, pickSet, shareText } from "../src/rules";
+import { MODES, NO_OVERLAP_FROM, dailySets, seedFor } from "../src/modes";
+import type { Prompt } from "../src/data";
+import { ROUNDS, answerKeys, pickSetV1, shareText } from "../src/rules";
 
 const dupes = (xs: string[]) => xs.filter((x, i) => xs.indexOf(x) !== i);
 const prompt = (pool: typeof US_P, id: string) => { const p = pool.find(x => x.id === id); if (!p) throw new Error(`no prompt ${id}`); return p; };
@@ -157,7 +158,7 @@ describe("daily sets for each game", () => {
   it("draws seven prompts from seven categories, different in each game", () => {
     for (let day = 20261125; day < 20261125 + 60; day++) {
       for (const m of MODES) {
-        const set = pickSet(seedFor(m, day), m.pool);
+        const set = dailySets(day)[m.id];
         expect(set).toHaveLength(ROUNDS);
         expect(new Set(set.map(p => p.cat)).size, `${m.id} ${day}`).toBe(ROUNDS);
       }
@@ -165,6 +166,32 @@ describe("daily sets for each game", () => {
   });
   it("keeps the world game's sets as they were", () => {
     expect(seedFor(MODES[0], 20261124)).toBe(20261124);
+  });
+  it("keeps the sets already played before the overlap rule", () => {
+    for (let day = 20261124; day < NO_OVERLAP_FROM; day++) for (const m of MODES) expect(dailySets(day)[m.id]).toEqual(pickSetV1(seedFor(m, day), m.pool));
+    // the day that prompted the rule: La Paz fitted both of these
+    expect(dailySets(20261127).capitals.map(p => p.id)).toEqual(expect.arrayContaining(["caps-shared-role", "caps-cont-SA"]));
+  });
+  it("doesn't let one answer fit two prompts on the same day", () => {
+    const clashes = (set: Prompt[]) => set.reduce((n, p, i) => n + set.slice(i + 1).filter(q => answerKeys(q).some(k => answerKeys(p).includes(k))).length, 0);
+    let usaDays = 0, capDays = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(2026, 10, 28 + i), day = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+      const s = dailySets(day);
+      expect(clashes(s.world), `world ${day}`).toBe(0);
+      // the capitals game never asks the capital version of a world prompt, and seldom a capital the world game asked for
+      const worldKeys = new Set(s.world.flatMap(answerKeys)), worldIds = new Set(s.world.map(p => "caps-" + p.id));
+      for (const p of s.capitals) expect(worldIds.has(p.id), `${day} ${p.id}`).toBe(false);
+      const c = clashes(s.capitals) + s.capitals.filter(p => answerKeys(p).some(k => worldKeys.has(k))).length;
+      expect(c, `capitals ${day}`).toBeLessThanOrEqual(1);
+      if (c) capDays++;
+      // the USA game is nearly all about the same 50 states, so a clash can't always be avoided: keep it rare and small
+      const n = clashes(s.usa);
+      expect(n, `usa ${day}`).toBeLessThanOrEqual(2);
+      if (n) usaDays++;
+    }
+    expect(usaDays).toBeLessThan(365 * 0.15);
+    expect(capDays).toBeLessThan(365 * 0.03);
   });
   it("names the game in the share line", () => {
     expect(shareText([null], "No. 2", "example.com/#usa", "USA")).toBe("Georilla USA No. 2 🦍 0/700\nTourist\n⬛\nexample.com/#usa");

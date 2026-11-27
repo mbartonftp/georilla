@@ -77,6 +77,7 @@ export interface Prompt {
   /** unique, stable id */
   id: string;
   q: string;
+  /** background for whoever edits the prompts. Never shown to players, so it can't give answers away */
   note?: string;
   cat: Category;
   /** what the answers are: countries, capitals of countries, regions of one country, or places by id */
