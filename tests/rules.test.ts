@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX, ROUNDS, dayKey, dayNumber, pickSet, rankFor, shareText, totalOf } from "../src/rules";
+import { MAX, ROUNDS, dayKey, dayNumber, pickSet, comboShareText, rankFor, shareText, totalOf } from "../src/rules";
 
 describe("daily set", () => {
   it("is the same for the same day and different on another day", () => {
@@ -44,5 +44,9 @@ describe("scoring", () => {
   });
   it("builds the share line", () => {
     expect(shareText(results, "No. 1", "example.com")).toBe("Georilla No. 1 🦍 180/700\nTrekker\n🟨⬛⬜🟪\nexample.com");
+  });
+  it("builds one share message for several games", () => {
+    const games = [{ name: "World", emoji: "🌍", results }, { name: "USA", emoji: "🇺🇸", results: [null, results[0]] }];
+    expect(comboShareText(games, "No. 4", "example.com")).toBe("Georilla No. 4 🦍 280/1400\n🌍 World 180 🟨⬛⬜🟪\n🇺🇸 USA 100 ⬛🟨\nexample.com");
   });
 });

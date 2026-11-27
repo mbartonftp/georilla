@@ -8,7 +8,7 @@ import { UsMap } from "./usmap";
 import { Confetti } from "./fx";
 import { Sound, buzz } from "./sound";
 import { store } from "./store";
-import { MAX, ROUNDS, SECONDS, TIERS, dayKey, dayNumber, pickSet, rankFor, shareText, totalOf, type Result } from "./rules";
+import { MAX, ROUNDS, SECONDS, TIERS, dayKey, dayNumber, pickSet, comboShareText, rankFor, shareText, totalOf, type Result } from "./rules";
 
 const TIER_UI = ["#c3cdc6", "#5ab4ff", "#4fe0b0", "#b58cff", "#ffd23f"];
 const TIER_MAP = ["#93a69c", "#3f9be8", "#22b888", "#9566e6", "#ffc21a"]; // slightly deeper, to read on the sand-coloured land
@@ -63,6 +63,9 @@ export function startGame(): void {
   const total = () => totalOf(S.results);
   const site = () => SITE + (mode.id === "world" ? "" : "/#" + mode.id);
   const share = () => shareText(S.results, practice ? "practice" : "No. " + num, site(), mode.title);
+  /** today's finished daily games, in tab order */
+  const doneToday = () => MODES.filter(m => dayOf(m)?.phase === "done");
+  const shareAll = () => comboShareText(doneToday().map(m => ({ name: m.name, emoji: m.emoji, results: dayOf(m)!.results })), "No. " + num, SITE);
 
   /* ---------- UI helpers ---------- */
   const panels = ["intro", "play", "reveal", "result"] as const;
@@ -391,6 +394,9 @@ export function startGame(): void {
     const others = MODES.filter(m => m !== mode && dayOf(m)?.phase !== "done");
     $("moretoday").hidden = practice || !others.length;
     $("moretoday").innerHTML = others.length ? `<span>Also today:</span>` + others.map(m => `<button class="btn ghost sm" data-go="${m.id}">${m.emoji} ${m.name}</button>`).join("") : "";
+    const finished = practice ? 0 : doneToday().length;
+    $("shareall").hidden = finished < 2;
+    $("shareall").textContent = finished === MODES.length ? "Share all three" : "Share both games";
     $("stats").hidden = practice;
     $("again").textContent = practice ? "Another practice round" : "Practice round";
     const tot = total();
@@ -498,11 +504,14 @@ export function startGame(): void {
   $("nextq").addEventListener("click", next);
   document.addEventListener("keydown", e => { if (e.key === "Enter" && S.phase === "reveal" && document.activeElement !== $("nextq")) next(); });
   $("sound").addEventListener("click", () => { $("sound").setAttribute("aria-pressed", String(Sound.toggle())); });
-  $("share").addEventListener("click", () => {
-    const t = share();
-    const fallback = () => { const ta = $<HTMLTextAreaElement>("sharetext"); ta.value = t; ta.hidden = false; ta.select(); $("toast").textContent = "Select and copy the text below."; };
-    try { navigator.clipboard.writeText(t).then(() => { $("toast").textContent = "Copied. Paste it anywhere."; }, fallback); } catch { fallback(); }
-  });
+  function copyShare(t: string, done: string): void {
+    const ta = $<HTMLTextAreaElement>("sharetext");
+    const fallback = () => { ta.value = t; ta.rows = t.split("\n").length; ta.hidden = false; ta.select(); $("toast").textContent = "Select and copy the text below."; };
+    ta.hidden = true;
+    try { navigator.clipboard.writeText(t).then(() => { $("toast").textContent = done; }, fallback); } catch { fallback(); }
+  }
+  $("share").addEventListener("click", () => copyShare(share(), "Copied. Paste it anywhere."));
+  $("shareall").addEventListener("click", () => copyShare(shareAll(), "Copied all of today's games. Paste it anywhere."));
 
   for (const btn of $("modes").querySelectorAll<HTMLButtonElement>(".mode")) btn.addEventListener("click", () => switchMode(btn.dataset.mode as ModeId));
   $("moretoday").addEventListener("click", e => { const b = (e.target as HTMLElement).closest<HTMLElement>("[data-go]"); if (b) switchMode(b.dataset.go as ModeId); });
@@ -524,5 +533,5 @@ export function startGame(): void {
   loadDaily(); route();
 
   // handle for automated play-through tests
-  (window as unknown as { __georilla: unknown }).__georilla = { get S() { return S; }, get ITEMS() { return ITEMS; }, get SET() { return SET; }, get mode() { return mode.id; }, shareText: share, switchMode };
+  (window as unknown as { __georilla: unknown }).__georilla = { get S() { return S; }, get ITEMS() { return ITEMS; }, get SET() { return SET; }, get mode() { return mode.id; }, shareText: share, shareAllText: shareAll, switchMode };
 }
