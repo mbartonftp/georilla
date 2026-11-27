@@ -185,12 +185,12 @@ describe("daily sets for each game", () => {
       const c = clashes(s.capitals) + s.capitals.filter(p => answerKeys(p).some(k => worldKeys.has(k))).length;
       expect(c, `capitals ${day}`).toBeLessThanOrEqual(1);
       if (c) capDays++;
-      // the USA game is nearly all about the same 50 states, so a clash can't always be avoided: keep it rare and small
+      // the USA game is mostly about the same 50 states, so a clash can't always be avoided: keep it rare
       const n = clashes(s.usa);
-      expect(n, `usa ${day}`).toBeLessThanOrEqual(2);
+      expect(n, `usa ${day}`).toBeLessThanOrEqual(1);
       if (n) usaDays++;
     }
-    expect(usaDays).toBeLessThan(365 * 0.15);
+    expect(usaDays).toBeLessThan(365 * 0.05);
     expect(capDays).toBeLessThan(365 * 0.03);
   });
   it("names the game in the share line", () => {
